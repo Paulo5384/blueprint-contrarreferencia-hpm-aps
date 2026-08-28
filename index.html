@@ -216,7 +216,7 @@
 </div>
 
 <div class="status-bar">
-  <span id="fb-status"><span class="status-dot dot-ok"></span>Guardado local (localStorage)</span>
+  <span id="fb-status"><span class="status-dot dot-warn"></span>Conectando...</span>
   <span id="unsaved-indicator"></span>
   <span id="autosave-timer" class="autosave-countdown"></span>
   <div class="version-list-wrap">
@@ -296,6 +296,124 @@
     <div class="modal-btns"><button class="btn-cancel" onclick="closeModals()">Cancelar</button><button class="btn-ok" onclick="confirmAddCol()">Agregar</button></div>
   </div>
 </div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc, orderBy, query, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCqUn5hFdvhd2poRRDMervgY5M9dFNPwIA",
+  authDomain: "blueprint-cr-hpm.firebaseapp.com",
+  projectId: "blueprint-cr-hpm",
+  storageBucket: "blueprint-cr-hpm.firebasestorage.app",
+  messagingSenderId: "818240142166",
+  appId: "1:818240142166:web:7c91789136f29bfde734f7"
+};
+
+let db = null;
+let firebaseReady = false;
+try {
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+  firebaseReady = true;
+} catch(e) {
+  console.error('Firebase init error', e);
+}
+
+function setStatus(type, msg) {
+  const dots = { ok:'dot-ok', warn:'dot-warn', err:'dot-err', pulse:'dot-pulse' };
+  const el = document.getElementById('fb-status');
+  if (el) el.innerHTML = `<span class="status-dot ${dots[type]}"></span>${msg}`;
+}
+
+async function saveVersion(name, notes, isAuto = false) {
+  if (!firebaseReady) { setStatus('err', 'Firebase no disponible'); return; }
+  try {
+    setStatus('pulse', isAuto ? 'Autoguardando...' : 'Guardando...');
+    const state = serializeState();
+    await addDoc(collection(db, 'versiones_cr'), { name, notes, state: JSON.stringify(state), isAuto, ts: serverTimestamp() });
+    window._hasUnsaved = false;
+    if (window.updateUnsavedIndicator) window.updateUnsavedIndicator();
+    const now = new Date().toLocaleTimeString('es-CL', {hour:'2-digit',minute:'2-digit'});
+    setStatus('ok', `Conectado · guardado ${now}`);
+    await loadVersionList();
+  } catch(e) {
+    setStatus('err', 'Error al guardar: ' + e.message);
+  }
+}
+
+async function loadVersionList() {
+  if (!firebaseReady) return;
+  try {
+    const q = query(collection(db, 'versiones_cr'), orderBy('ts','desc'));
+    const snap = await getDocs(q);
+    const list = document.getElementById('version-list');
+    list.innerHTML = '';
+    if (snap.empty) { list.innerHTML = '<span style="color:var(--text-xs)">Sin versiones</span>'; return; }
+    snap.forEach(d => {
+      const data = d.data();
+      const chip = document.createElement('button');
+      chip.className = 'ver-chip' + (data.isAuto ? ' autosave' : '');
+      const dt = data.ts?.toDate ? data.ts.toDate() : new Date();
+      chip.textContent = data.name || dt.toLocaleDateString('es-CL');
+      chip.title = (data.notes || '') + (data.isAuto ? ' [autoguardado]' : '');
+      chip.onclick = () => loadVersion(d.id, chip);
+      list.appendChild(chip);
+    });
+  } catch(e) { console.warn('Error cargando versiones', e); }
+}
+
+async function loadVersion(id, chip) {
+  if (window._hasUnsaved && !confirm('Hay cambios sin guardar. ¿Cargar esta versión de todas formas?')) return;
+  try {
+    setStatus('pulse', 'Cargando versión...');
+    const snap = await getDoc(doc(db, 'versiones_cr', id));
+    if (!snap.exists()) return;
+    const data = snap.data();
+    if (data.state) restoreState(JSON.parse(data.state));
+    document.querySelectorAll('.ver-chip').forEach(c => c.classList.remove('active'));
+    if (chip) chip.classList.add('active');
+    setStatus('ok', 'Versión cargada: ' + (data.name || ''));
+  } catch(e) {
+    setStatus('err', 'Error al cargar: ' + e.message);
+  }
+}
+
+async function loadLatestVersion() {
+  if (!firebaseReady) {
+    setStatus('err', 'Firebase no disponible — usando contenido base');
+    if (window.seedTable) window.seedTable();
+    return;
+  }
+  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000));
+  try {
+    const q = query(collection(db, 'versiones_cr'), orderBy('ts','desc'), limit(1));
+    const snap = await Promise.race([getDocs(q), timeout]);
+    if (!snap.empty) {
+      const d = snap.docs[0];
+      const data = d.data();
+      if (data.state) {
+        restoreState(JSON.parse(data.state));
+        setStatus('ok', 'Última versión cargada: ' + (data.name || 'autoguardado'));
+      } else {
+        setStatus('ok', 'Firebase conectado');
+      }
+    } else {
+      if (window.seedTable) window.seedTable();
+      setStatus('ok', 'Firebase conectado — sin versiones previas, usando contenido base');
+    }
+  } catch(e) {
+    if (window.seedTable) window.seedTable();
+    setStatus('err', e.message === 'timeout' ? 'Tiempo de espera agotado — usando contenido base' : ('Error: ' + e.message));
+  }
+}
+
+window._saveVersion = saveVersion;
+window._loadVersionList = loadVersionList;
+
+window._hasUnsaved = false;
+loadLatestVersion().then(() => loadVersionList());
+</script>
 
 <script>
 const em = '—';
@@ -415,9 +533,10 @@ function seedTable() {
   });
 }
 
-// ── PERSISTENCIA LOCAL ──────────────────────────────────────────────────
-const LS_KEY = 'cr_blueprint_v1';
-const LS_VERSIONS = 'cr_blueprint_versions_v1';
+function setStatus(type, msg) {
+  const dots = { ok:'dot-ok', warn:'dot-warn', err:'dot-err', pulse:'dot-pulse' };
+  document.getElementById('fb-status').innerHTML = `<span class="status-dot ${dots[type]}"></span>${msg}`;
+}
 
 function serializeState() {
   const cols = [];
@@ -502,60 +621,6 @@ function restoreState(state) {
   window._hasUnsaved = false; updateUnsavedIndicator();
 }
 
-function setStatus(type, msg) {
-  const dots = { ok:'dot-ok', warn:'dot-warn', err:'dot-err', pulse:'dot-pulse' };
-  document.getElementById('fb-status').innerHTML = `<span class="status-dot ${dots[type]}"></span>${msg}`;
-}
-
-function getVersions() { try { return JSON.parse(localStorage.getItem(LS_VERSIONS)||'[]'); } catch(e){ return []; } }
-function saveVersions(list) { localStorage.setItem(LS_VERSIONS, JSON.stringify(list)); }
-
-function saveVersion(name, notes) {
-  const state = serializeState();
-  const versions = getVersions();
-  const v = { id: 'v_'+Date.now(), name, notes, state, ts: new Date().toISOString() };
-  versions.unshift(v);
-  saveVersions(versions);
-  localStorage.setItem(LS_KEY, JSON.stringify(state));
-  window._hasUnsaved = false; updateUnsavedIndicator();
-  const now = new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
-  setStatus('ok', `Guardado local · ${now}`);
-  renderVersionList();
-}
-
-function renderVersionList() {
-  const list = document.getElementById('version-list');
-  const versions = getVersions();
-  list.innerHTML = '';
-  if (!versions.length) { list.innerHTML = '<span style="color:var(--text-xs)">Sin versiones</span>'; return; }
-  versions.forEach(v => {
-    const chip = document.createElement('button');
-    chip.className = 'ver-chip';
-    chip.textContent = v.name;
-    chip.title = v.notes || '';
-    chip.onclick = () => loadVersion(v.id, chip);
-    list.appendChild(chip);
-  });
-}
-
-function loadVersion(id, chip) {
-  if (window._hasUnsaved && !confirm('Hay cambios sin guardar. ¿Cargar esta versión de todas formas?')) return;
-  const versions = getVersions();
-  const v = versions.find(x => x.id === id);
-  if (!v) return;
-  restoreState(v.state);
-  document.querySelectorAll('.ver-chip').forEach(c => c.classList.remove('active'));
-  if (chip) chip.classList.add('active');
-  setStatus('ok', 'Versión cargada: ' + v.name);
-}
-
-function loadLatest() {
-  const raw = localStorage.getItem(LS_KEY);
-  if (raw) { try { restoreState(JSON.parse(raw)); setStatus('ok','Guardado local — última edición restaurada'); return; } catch(e){} }
-  seedTable();
-  setStatus('ok', 'Guardado local — contenido base V0.2');
-}
-
 const AUTOSAVE_INTERVAL = 3*60;
 let autosaveSecondsLeft = AUTOSAVE_INTERVAL;
 function tickAutosave() {
@@ -564,7 +629,7 @@ function tickAutosave() {
   if (autosaveSecondsLeft <= 0) {
     autosaveSecondsLeft = AUTOSAVE_INTERVAL;
     const now = new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
-    saveVersion('Autoguardado ' + now, '');
+    window._saveVersion('Autoguardado ' + now, '', true);
   }
 }
 function updateTimerDisplay() {
@@ -611,7 +676,7 @@ function openSaveModal() {
 function confirmSave() {
   const name = document.getElementById('save-name').value.trim() || new Date().toLocaleString('es-CL');
   const notes = document.getElementById('save-notes').value.trim();
-  closeModals(); saveVersion(name, notes);
+  closeModals(); window._saveVersion(name, notes, false);
 }
 function getColCount() { return document.querySelectorAll('#thead-row th.col-stage').length; }
 function updateColIndices() {
@@ -756,8 +821,6 @@ document.addEventListener('keydown', e => { if (e.key==='Escape') closeModals();
 document.addEventListener('input', e => { if (e.target.closest('#tbody') || e.target.closest('#thead-row')) window._markUnsaved(); });
 
 window._hasUnsaved = false;
-loadLatest();
-renderVersionList();
 
 // ── PERFILES: VISUALIZADOR / EDITOR ─────────────────────────────────────
 const EDITOR_PASSWORD = 'hpm';
