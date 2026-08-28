@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa de Servicios — Contrarreferencia y Continuidad Asistencial · HPM-APS</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --azul:#185FA5; --azul-l:#E6F1FB; --azul-m:#B5D4F4;
+    --teal:#0F6E56; --teal-l:#E1F5EE;
+    --amber:#854F0B; --amber-l:#FAEEDA; --amber-m:#FAC775;
+    --coral:#993C1D; --coral-l:#FAECE7;
+    --purple:#534AB7; --purple-l:#EEEDFE;
+    --gray:#444441; --gray-l:#F1EFE8; --gray-m:#D3D1C7;
+    --red:#A32D2D; --red-l:#FCEBEB; --red-m:#F7C1C1;
+    --green:#3B6D11; --green-l:#EAF3DE; --green-m:#C0DD97;
+    --body-bg:#f8f7f4; --border:#c8c6bc; --border-h:#a8a69e;
+    --text:#1a1a18; --text-s:#5f5e5a; --text-xs:#888780;
+    --shadow:0 1px 3px rgba(0,0,0,0.08);
+  }
+  body { font-family:system-ui,-apple-system,sans-serif; background:var(--body-bg); color:var(--text); font-size:13px; line-height:1.5; }
+
+  header { background:white; border-bottom:1px solid var(--border); padding:10px 16px; position:sticky; top:0; z-index:200; box-shadow:var(--shadow); display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .header-left h1 { font-size:14px; font-weight:600; }
+  .header-left p { font-size:11px; color:var(--text-s); margin-top:1px; }
+  .legend { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+  .leg-item { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text-s); white-space:nowrap; }
+  .leg-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; border:1.5px solid; }
+  .leg-green  { background:var(--green-l);  border-color:var(--green); }
+  .leg-yellow { background:var(--amber-l);  border-color:var(--amber-m); }
+  .leg-red    { background:var(--red-l);    border-color:var(--red); }
+  .leg-blue   { background:var(--azul-l);   border-color:var(--azul); }
+
+  .toolbar { background:white; border-bottom:1px solid var(--border); padding:6px 16px; display:flex; gap:6px; flex-wrap:wrap; align-items:center; position:sticky; top:57px; z-index:190; }
+  .tb-btn { display:inline-flex; align-items:center; gap:5px; font-size:11px; padding:5px 10px; border:1px solid var(--border-h); border-radius:5px; background:white; cursor:pointer; color:var(--text-s); transition:background .15s; white-space:nowrap; }
+  .tb-btn:hover { background:var(--gray-l); }
+  .tb-btn.success { background:#0F6E56; color:white; border-color:#0F6E56; }
+  .tb-btn.success:hover { background:#0a5040; }
+  .tb-sep { width:1px; height:22px; background:var(--border); margin:0 2px; }
+
+  .status-bar { background:var(--gray-l); border-bottom:1px solid var(--border); padding:4px 16px; font-size:10px; color:var(--text-s); display:flex; gap:12px; align-items:center; flex-wrap:wrap; min-height:28px; }
+  .status-dot { width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:3px; flex-shrink:0; }
+  .dot-ok { background:#0F6E56; } .dot-warn { background:#FAC775; } .dot-err { background:var(--red); }
+  .dot-pulse { background:#FAC775; animation:pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .unsaved-badge { background:var(--amber-l); color:var(--amber); border:1px solid var(--amber-m); border-radius:4px; padding:1px 6px; font-size:10px; font-weight:500; }
+  .autosave-countdown { color:var(--text-xs); font-size:10px; }
+  .version-list-wrap { display:flex; gap:5px; align-items:center; flex-wrap:wrap; margin-left:auto; }
+  .ver-chip { font-size:10px; padding:2px 8px; border-radius:10px; border:1px solid var(--border-h); background:white; cursor:pointer; color:var(--text-s); transition:all .15s; }
+  .ver-chip:hover { background:var(--azul-l); color:var(--azul); border-color:var(--azul-m); }
+  .ver-chip.active { background:var(--azul-l); color:var(--azul); border-color:var(--azul); font-weight:600; }
+
+  .container { padding:14px 12px 40px; overflow-x:auto; }
+  table { border-collapse:collapse; min-width:1240px; width:100%; background:white; border-radius:8px; overflow:hidden; box-shadow:var(--shadow); }
+  thead tr th { padding:8px; border:1px solid var(--border); font-weight:600; font-size:11px; text-align:center; vertical-align:middle; line-height:1.3; position:relative; }
+  th.col-actor-head { background:#1a1a18; color:white; width:170px; }
+  th.col-stage { background:#1a1a18; color:white; }
+  th.col-stage .stage-title { font-size:11px; font-weight:500; display:block; outline:none; }
+  th.col-stage .stage-sub { font-size:9px; font-weight:400; opacity:.6; display:block; margin-top:2px; outline:none; }
+  th.col-stage:hover .col-controls { opacity:1; }
+  .col-controls { position:absolute; top:3px; right:3px; display:flex; gap:2px; opacity:0; transition:opacity .15s; }
+  .col-ctrl-btn { background:rgba(255,255,255,.15); border:none; border-radius:3px; cursor:pointer; padding:2px 4px; font-size:9px; color:white; line-height:1; }
+  .col-ctrl-btn:hover { background:rgba(255,255,255,.3); }
+
+  tr.section-sep td { padding:4px 10px; font-size:9.5px; font-weight:600; letter-spacing:.07em; text-transform:uppercase; border:1px solid var(--border); border-top:2px solid var(--border-h); position:relative; }
+  tr.section-sep td:hover .row-controls { opacity:1; }
+  .sec-actores  { background:var(--purple-l); color:var(--purple); }
+  .sec-primaria { background:var(--gray-l);   color:var(--gray); }
+  .sec-rutas    { background:var(--teal-l);   color:var(--teal); }
+  .sec-objeto   { background:var(--azul-l);   color:var(--azul); }
+  .sec-reglas   { background:var(--amber-l);  color:var(--amber); }
+  .sec-control  { background:var(--coral-l);  color:var(--coral); }
+
+  td { border:1px solid var(--border); padding:7px 8px; vertical-align:top; position:relative; }
+  td.actor-cell { font-weight:600; font-size:11px; color:var(--text-s); width:170px; background:#fafaf8; line-height:1.4; }
+  td.actor-cell[contenteditable="true"] { color:var(--text); }
+  tr:not(.section-sep):hover td { background:#fdfcf9; }
+  tr:not(.section-sep):hover .row-controls { opacity:1; }
+  tr.row-primary td, tr.row-primary td.actor-cell { background:#f3f2ee; font-weight:600; }
+  tr.row-route-blue td.actor-cell { border-left:3px solid var(--azul); }
+  tr.row-route-amber td.actor-cell { border-left:3px solid var(--amber-m); }
+  tr.row-route-red td.actor-cell { border-left:3px solid var(--red); }
+  tr.row-object td, tr.row-object td.actor-cell { background:var(--azul-l); color:var(--azul); font-weight:600; }
+
+  .cell-wrap { position:relative; }
+  .cell-main { font-size:11px; color:var(--text); line-height:1.5; outline:none; min-height:16px; }
+  .cell-main:focus { background:rgba(24,95,165,.04); border-radius:3px; }
+
+  .tag-green  { display:block; margin-top:4px; font-size:10px; color:var(--green); background:var(--green-l); border-left:2.5px solid var(--green); padding:2px 5px; border-radius:0 3px 3px 0; line-height:1.4; outline:none; }
+  .tag-yellow { display:block; margin-top:4px; font-size:10px; color:var(--amber); background:var(--amber-l); border-left:2.5px solid var(--amber-m); padding:2px 5px; border-radius:0 3px 3px 0; line-height:1.4; outline:none; }
+  .tag-red    { display:block; margin-top:4px; font-size:10px; color:var(--red); background:var(--red-l); border-left:2.5px solid var(--red); padding:2px 5px; border-radius:0 3px 3px 0; line-height:1.4; outline:none; }
+  .tag-blue   { display:block; margin-top:4px; font-size:10px; color:var(--azul); background:var(--azul-l); border-left:2.5px solid var(--azul); padding:2px 5px; border-radius:0 3px 3px 0; line-height:1.4; outline:none; }
+
+  .empty { color:var(--text-xs); font-size:11px; text-align:center; opacity:.35; }
+
+  .cell-add-btns { display:none; gap:5px; margin-top:6px; align-items:center; }
+  td:hover .cell-add-btns, td:focus-within .cell-add-btns { display:flex; }
+  .add-dot { width:14px; height:14px; border-radius:50%; border:1.5px solid; cursor:pointer; padding:0; flex-shrink:0; }
+  .add-dot.green  { background:var(--green-l);  border-color:var(--green); }  .add-dot.green:hover  { background:var(--green); }
+  .add-dot.yellow { background:var(--amber-l);  border-color:var(--amber-m); } .add-dot.yellow:hover { background:var(--amber-m); }
+  .add-dot.red    { background:var(--red-l);    border-color:var(--red); }    .add-dot.red:hover    { background:var(--red); }
+  .add-dot.blue   { background:var(--azul-l);   border-color:var(--azul); }   .add-dot.blue:hover   { background:var(--azul); }
+  .del-tag { font-size:9px; cursor:pointer; opacity:.4; margin-left:3px; }
+  .del-tag:hover { opacity:1; }
+
+  .row-controls { position:absolute; right:4px; top:50%; transform:translateY(-50%); display:flex; gap:3px; opacity:0; transition:opacity .15s; z-index:10; }
+  .row-ctrl-btn { background:white; border:1px solid var(--border-h); border-radius:4px; cursor:pointer; padding:2px 5px; font-size:9px; color:var(--text-s); line-height:1.2; white-space:nowrap; }
+  .row-ctrl-btn:hover { background:var(--gray-l); }
+  .row-ctrl-btn.del { color:var(--red); }
+  .row-ctrl-btn.del:hover { background:var(--red-l); }
+
+  .row-ops { position:absolute; top:2px; right:2px; display:flex; gap:2px; opacity:0; transition:opacity .15s; z-index:11; }
+  td.actor-cell:hover .row-ops { opacity:1; }
+  .row-op-btn { background:white; border:1px solid var(--border-h); border-radius:3px; cursor:pointer; padding:1px 4px; font-size:9px; color:var(--text-s); line-height:1.3; }
+  .row-op-btn:hover { background:var(--gray-l); }
+  .row-op-btn.del { color:var(--red); }
+  .row-op-btn.del:hover { background:var(--red-l); }
+
+  .fb-badge { font-size:8px; margin-left:5px; padding:1px 5px; border-radius:8px; font-weight:600; white-space:nowrap; }
+  .fb-badge.fb-front { background:var(--teal-l); color:var(--teal); }
+  .fb-badge.fb-back  { background:var(--gray-l); color:var(--gray); }
+
+  tr.line-divider td { border:none; padding:3px 10px; text-align:center; font-size:9px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--teal); background:var(--teal-l); border-top:1px dashed var(--teal); border-bottom:1px dashed var(--teal); }
+
+  .state-badge { position:absolute; top:2px; right:2px; width:16px; height:16px; border-radius:3px; font-size:8px; line-height:14px; text-align:center; cursor:pointer; border:1px solid var(--border-h); background:white; color:var(--text-xs); padding:0; opacity:.45; z-index:12; }
+  .state-badge:hover { opacity:1; }
+  .state-badge.state-existe    { border-color:var(--green); color:var(--green); background:var(--green-l); opacity:1; }
+  .state-badge.state-noexiste  { border-color:var(--red); color:var(--red); background:var(--red-l); border-style:solid; opacity:1; }
+  .state-badge.state-nosabemos { border-color:var(--amber-m); color:var(--amber); background:var(--amber-l); border-style:dotted; opacity:1; }
+  .state-badge.state-propuesta { border-color:var(--azul); color:var(--azul); background:var(--azul-l); border-style:dashed; opacity:1; }
+  td.td-existe    { box-shadow:inset 3px 0 0 var(--green); }
+  td.td-noexiste  { box-shadow:inset 3px 0 0 var(--red); }
+  td.td-nosabemos { box-shadow:inset 3px 0 0 var(--amber-m); }
+  td.td-propuesta { box-shadow:inset 3px 0 0 var(--azul); }
+  .state-legend { display:flex; gap:10px; flex-wrap:wrap; font-size:10px; color:var(--text-s); padding:5px 16px; background:white; border-bottom:1px solid var(--border); }
+  .state-legend b { font-weight:600; }
+
+  .sec-toggle { background:none; border:none; cursor:pointer; font-size:10px; margin-right:7px; color:inherit; padding:0 2px; vertical-align:middle; }
+  tr.section-sep.collapsed td { opacity:.75; }
+
+  #login-gate { position:fixed; inset:0; background:rgba(20,20,18,.6); z-index:600; display:flex; align-items:center; justify-content:center; }
+  #login-gate .modal { width:320px; text-align:center; }
+  #login-gate .role-btn { width:100%; padding:10px; margin-bottom:8px; border-radius:6px; font-size:13px; cursor:pointer; }
+  .role-badge { font-size:10px; padding:2px 8px; border-radius:10px; border:1px solid var(--border-h); background:var(--gray-l); color:var(--text-s); }
+  .change-role-link { font-size:10px; color:var(--text-s); text-decoration:underline; cursor:pointer; background:none; border:none; }
+
+  body.role-viewer .editor-only { display:none !important; }
+  body.role-viewer .row-ops, body.role-viewer .col-controls, body.role-viewer .cell-add-btns, body.role-viewer .del-tag, body.role-viewer tr.section-sep .row-controls { display:none !important; }
+  body.role-viewer .state-badge { pointer-events:none; }
+
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:500; display:flex; align-items:center; justify-content:center; }
+  .modal { background:white; border-radius:10px; padding:20px; width:340px; box-shadow:0 4px 20px rgba(0,0,0,.15); }
+  .modal h3 { font-size:13px; font-weight:600; margin-bottom:12px; }
+  .modal label { font-size:11px; color:var(--text-s); display:block; margin-bottom:4px; }
+  .modal input, .modal select, .modal textarea { width:100%; padding:7px 9px; border:1px solid var(--border-h); border-radius:5px; font-size:12px; margin-bottom:12px; color:var(--text); font-family:inherit; }
+  .modal textarea { resize:vertical; min-height:60px; }
+  .modal-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:4px; }
+  .btn-cancel { padding:6px 14px; border:1px solid var(--border-h); border-radius:5px; background:white; cursor:pointer; font-size:12px; color:var(--text-s); }
+  .btn-ok { padding:6px 14px; border:none; border-radius:5px; background:#1a1a18; cursor:pointer; font-size:12px; color:white; }
+  .btn-ok:hover { background:#333; }
+
+  footer { text-align:center; font-size:10px; color:var(--text-xs); padding:10px 16px 6px; }
+  @media print {
+    header,footer { position:static; }
+    .toolbar,.status-bar,.col-controls,.row-controls,.cell-add-btns { display:none !important; }
+    .container { padding:0; } body { background:white; }
+    table { box-shadow:none; min-width:0; } td,th { padding:4px 5px; font-size:9px; }
+    .tag-green,.tag-yellow,.tag-red,.tag-blue { font-size:8px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="login-gate">
+  <div class="modal">
+    <h3>Mapa de Servicios — Contrarreferencia HPM-APS</h3>
+    <p style="font-size:12px;color:var(--text-s);margin-bottom:14px;">Elige cómo quieres entrar</p>
+    <button class="btn-ok role-btn" onclick="enterAsViewer()">👁 Visualizador — solo lectura</button>
+    <button class="btn-cancel role-btn" onclick="showEditorPasswordPrompt()">✏️ Editor</button>
+    <div id="editor-pw-box" style="display:none;margin-top:10px;">
+      <input type="password" id="editor-pw" placeholder="Contraseña editor" onkeydown="if(event.key==='Enter')confirmEditorLogin()">
+      <button class="btn-ok role-btn" onclick="confirmEditorLogin()">Entrar</button>
+      <p id="pw-error" style="color:var(--red);font-size:11px;margin-top:2px;display:none;">Contraseña incorrecta</p>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="header-left">
+    <h1>Mapa de Servicios — Contrarreferencia y Continuidad Asistencial HPM–APS</h1>
+    <p>Hospital Puerto Montt · Servicio de Salud del Reloncaví · Navegadores en Red / UGT · V0.2</p>
+  </div>
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot leg-green"></div> Fortaleza</div>
+    <div class="leg-item"><div class="leg-dot leg-yellow"></div> Precaución</div>
+    <div class="leg-item"><div class="leg-dot leg-red"></div> Red flag</div>
+    <div class="leg-item"><div class="leg-dot leg-blue"></div> Otro / referencia</div>
+    <span class="role-badge" id="role-badge">—</span>
+    <button class="change-role-link" onclick="changeRole()">cambiar perfil</button>
+  </div>
+</header>
+
+<div class="toolbar">
+  <button class="tb-btn editor-only" onclick="addColumn()">+ Columna</button>
+  <button class="tb-btn editor-only" onclick="openAddRowModal()">+ Fila</button>
+  <button class="tb-btn editor-only" onclick="openAddSectionModal()">+ Nueva capa</button>
+  <button class="tb-btn editor-only" id="undo-btn" onclick="undo()" disabled style="opacity:.4">↶ Deshacer</button>
+  <button class="tb-btn editor-only" onclick="toggleEdit()"><span id="edit-label">Editar</span></button>
+  <div class="tb-sep editor-only"></div>
+  <button class="tb-btn success editor-only" onclick="openSaveModal()">💾 Guardar versión</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="collapse-toggle-btn" onclick="toggleCollapseAll()">Colapsar todo</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="window.print()">Imprimir</button>
+</div>
+
+<div class="status-bar">
+  <span id="fb-status"><span class="status-dot dot-ok"></span>Guardado local (localStorage)</span>
+  <span id="unsaved-indicator"></span>
+  <span id="autosave-timer" class="autosave-countdown"></span>
+  <div class="version-list-wrap">
+    <span style="color:var(--text-xs)">Versiones:</span>
+    <div id="version-list" style="display:flex;gap:5px;flex-wrap:wrap"><span style="color:var(--text-xs);font-size:10px">—</span></div>
+  </div>
+</div>
+
+<div class="state-legend">
+  <span><b>Estado AS-IS/TO-BE</b> (clic en el badge de cada celda para ciclar):</span>
+  <span>🟩 sólido = existe</span>
+  <span>🟥 sólido = no existe</span>
+  <span>⬜ punteado = no sabemos</span>
+  <span>🟦 discontinuo = propuesta</span>
+</div>
+
+<div class="container">
+<table id="main-table">
+  <thead id="thead-row">
+    <tr>
+      <th class="col-actor-head"></th>
+      <th class="col-stage" data-col="0"><span class="stage-title">1. Decisión clínica</span><span class="stage-sub">T0</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(0)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(0)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(0)">✕</button></div></th>
+      <th class="col-stage" data-col="1"><span class="stage-title">2. Emisión CR</span><span class="stage-sub">T1</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(1)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(1)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(1)">✕</button></div></th>
+      <th class="col-stage" data-col="2"><span class="stage-title">3. Envío</span><span class="stage-sub">T2</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(2)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(2)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(2)">✕</button></div></th>
+      <th class="col-stage" data-col="3"><span class="stage-title">4. Recepción</span><span class="stage-sub">T3</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(3)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(3)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(3)">✕</button></div></th>
+      <th class="col-stage" data-col="4"><span class="stage-title">5. Revisión y decisión</span><span class="stage-sub">T4</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(4)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(4)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(4)">✕</button></div></th>
+      <th class="col-stage" data-col="5"><span class="stage-title">6. Gestión</span><span class="stage-sub">T5</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(5)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(5)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(5)">✕</button></div></th>
+      <th class="col-stage" data-col="6"><span class="stage-title">7. Vinculación</span><span class="stage-sub">T6</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(6)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(6)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(6)">✕</button></div></th>
+      <th class="col-stage" data-col="7"><span class="stage-title">8. Atención / continuidad</span><span class="stage-sub">T7</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(7)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(7)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(7)">✕</button></div></th>
+      <th class="col-stage" data-col="8"><span class="stage-title">9. Cierre</span><span class="stage-sub">T8</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(8)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(8)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(8)">✕</button></div></th>
+    </tr>
+  </thead>
+  <tbody id="tbody"></tbody>
+</table>
+</div>
+
+<footer>
+  <strong>Hospital Puerto Montt · Servicio de Salud del Reloncaví</strong> · UGT / Navegadores en Red · Blueprint V0.2 — base ORD. N°2301 y Protocolo Res. Exenta N°6041-2025, en diálogo con MGIAA v2.0<br>
+  <span style="opacity:.8">Las filas 🔵🟠🔴 son un <b>lente de lectura transversal</b> sobre el proceso — no reescriben lo que hace cada actor por tipo de CR. Lo que cambia entre rutas es el ritmo, el plazo y el nivel de seguimiento; el actor responsable en cada etapa es el mismo.</span><br>
+  <span style="opacity:.8">"Responsabilidad primaria" describe el nivel operativo de cada etapa — no reasigna la continuidad como responsabilidad de una unidad. Según el MGIAA, la continuidad es resultado de la gobernanza del proceso completo, no de ningún actor de esta tabla por sí solo.</span>
+</footer>
+
+<div id="modal-save" class="modal-overlay" style="display:none">
+  <div class="modal"><h3>Guardar versión</h3>
+    <label>Nombre</label><input type="text" id="save-name" placeholder="Ej: Jornada contrarreferencia — post discusión">
+    <label>Notas (opcional)</label><textarea id="save-notes" placeholder="Ej: Rutas agregadas tras taller"></textarea>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModals()">Cancelar</button><button class="btn-ok" onclick="confirmSave()">Guardar</button></div>
+  </div>
+</div>
+<div id="modal-row" class="modal-overlay" style="display:none">
+  <div class="modal"><h3>Nueva fila</h3>
+    <label>Nombre del actor / fila</label><input type="text" id="new-actor" placeholder="Ej: Farmacia APS">
+    <label>Sección</label><select id="new-section"></select>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModals()">Cancelar</button><button class="btn-ok" onclick="confirmAddRow()">Agregar</button></div>
+  </div>
+</div>
+<div id="modal-section" class="modal-overlay" style="display:none">
+  <div class="modal"><h3>Nueva capa / sección</h3>
+    <label>Nombre de la capa</label><input type="text" id="new-section-label" placeholder="Ej: Farmacia y dispensación">
+    <label>Color</label>
+    <select id="new-section-color">
+      <option value="sec-actores">Morado — Actores</option>
+      <option value="sec-primaria">Gris — Responsabilidad primaria</option>
+      <option value="sec-rutas">Teal — Rutas de gestión</option>
+      <option value="sec-objeto">Azul — Objeto de gestión</option>
+      <option value="sec-reglas">Ámbar — Reglas del proceso</option>
+      <option value="sec-control">Coral — Datos / tiempos / alertas</option>
+    </select>
+    <label>Posición</label><select id="new-section-pos"></select>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModals()">Cancelar</button><button class="btn-ok" onclick="confirmAddSection()">Crear capa</button></div>
+  </div>
+</div>
+<div id="modal-col" class="modal-overlay" style="display:none">
+  <div class="modal"><h3 id="modal-col-title">Nueva etapa</h3>
+    <label>Título</label><input type="text" id="new-col-title" placeholder="Ej: 10. Reingreso">
+    <label>Subtítulo (opcional)</label><input type="text" id="new-col-sub" placeholder="Ej: T9">
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModals()">Cancelar</button><button class="btn-ok" onclick="confirmAddCol()">Agregar</button></div>
+  </div>
+</div>
+
+<script>
+const em = '—';
+const SEED_COLS = 9;
+const SEED_SECTIONS = [
+ {key:'actores', cls:'sec-actores', label:'Trayectoria y actores', rows:[
+  {actor:'Persona / cuidador', cells:['Recibe explicación de conducta, continuidad y próximos pasos','Conoce que será contrarreferida, destino y qué debería ocurrir','No debiera depender de transportar físicamente la CR','Espera activación del proceso por receptor','Puede ser contactada para complementar información','Recibe orientación sobre gestión','Recibe contacto, citación, instrucciones y requisitos para atención','Accede a control, tratamiento, examen u otra acción requerida','Conoce resultado, plan posterior y dónde continuar']},
+  {type:'divider', label:'Línea de interacción — contacto directo con la persona'},
+  {actor:'Especialista HPM', fb:'front', cells:['Define conducta, necesidad de continuidad, tipo de CR y destino clínico','Registra CR: situación clínica, tratamiento, indicaciones, acción requerida, prioridad/plazo y prerrequisitos cuando corresponda','Asegura correcto registro para su envío/disponibilización',em,'Resuelve dudas clínicas o complementa información cuando corresponda','Participa excepcionalmente ante necesidad de redefinición clínica',em,em,'Finaliza responsabilidad clínica según criterios definidos']},
+  {actor:'Sistema HPM / EXPERTOS / RCE', fb:'back', cells:['Registra atención y decisión','Registra CR y datos obligatorios','Envía/disponibiliza CR al destino','Registra ingreso/puesta a disposición del receptor','Registra revisión, clasificación, decisión, responsable y plazo','Registra acciones/cambios de estado','Registra contacto/citación si existe integración','Vincula atención posterior si existe interoperabilidad','Registra estado final/cierre']},
+  {actor:'CODE / función receptora APS *', fb:'back', cells:[em,em,em,'Recibe/dispone de CR en canal o bandeja definida','Revisa, clasifica, identifica requerimientos y prerrequisitos, determina acción, prioridad, responsable y plazo','Asigna/supervisa gestión según circuito','Monitorea avance cuando corresponda','Verifica cumplimiento según ruta','Confirma resultado/cierre del circuito']},
+  {actor:'Profesional de enlace ECICEP *', fb:'back', cells:[em,em,em,'Puede identificar CR pertinentes a su ámbito','Apoya identificación de necesidades de articulación según criterios','Articula APS con mayor complejidad cuando corresponda','Facilita transición y resolución de barreras','Apoya continuidad de casos seleccionados','Retroalimenta resultado / activa escalamiento']},
+  {actor:'Gestión de casos APS *', fb:'front', cells:[em,em,em,em,'Identifica casos que requieren gestión diferenciada','Realiza seguimiento activo de casos priorizados','Contacta, coordina y acompaña','Verifica continuidad efectiva','Cierra seguimiento o escala']},
+  {actor:'SOME / gestión administrativa APS *', fb:'front', cells:[em,em,em,em,'Recibe acción asignada','Gestiona hora, agenda, prestación, examen o trámite requerido','Contacta e informa hora, instrucciones y requisitos','Registra resultado administrativo','Informa cumplimiento/imposibilidad']},
+  {actor:'Equipo clínico APS *', fb:'front', cells:[em,em,em,'Accede a información cuando corresponda','Puede apoyar decisión clínica cuando se requiera','Recibe caso/prestación asignada','Puede verificar preparación según circuito','Realiza control, continuidad farmacológica, examen, seguimiento u otra acción clínica','Define seguimiento posterior o nueva necesidad']},
+ ]},
+ {key:'primaria', cls:'sec-primaria', rowCls:'row-primary', label:'Responsabilidad primaria', rows:[
+  {actor:'Responsable', cells:['Especialista','Especialista','Emisor / sistema *','Receptor definido *','CODE / función receptora *','Actor asignado según acción','Responsable de gestión definido *','Equipo clínico receptor','Receptor / responsable de cierre *']},
+ ]},
+ {key:'rutas', cls:'sec-rutas', label:'Rutas de gestión de la CR', rows:[
+  {actor:'🔵 Ruta CR informativa', rowCls:'row-route-blue', cells:['Define que no requiere acción posterior','Emite información clínica pertinente','Envía/disponibiliza','Ingresa al receptor','Revisa → "solo informativa / sin acción requerida"',em,em,em,'Cierre informacional']},
+  {actor:'🟠 Ruta CR con acción requerida', rowCls:'row-route-amber', cells:['Define necesidad posterior','Emite CR con acción, destino y plazo cuando corresponda','Envía/disponibiliza','Ingresa al receptor','Revisa → clasifica → acción + responsable + plazo','Ejecuta primera gestión','Contacta/cita/prepara/vincula','Concreta acción requerida','Cierre por cumplimiento + resultado']},
+  {actor:'🔴 Ruta CR prioritaria / crítica', rowCls:'row-route-red', cells:['Identifica condición prioritaria','Prioridad + plazo + condición crítica','Envío priorizado y trazable','Ingreso identificado como prioritario','Revisión prioritaria + acción + responsable + plazo','Gestión activa + seguimiento','Vinculación activa + resolución de barreras','Acción concretada dentro del plazo','Cierre confirmado o escalamiento']},
+ ]},
+ {key:'objeto', cls:'sec-objeto', label:'Objeto de gestión MGIAA', rows:[
+  {actor:'Objeto de gestión', rowCls:'row-object', cells:['Articulación / continuidad','Articulación / continuidad','Articulación','Demanda','Demanda + articulación','Demanda + oferta','Trayectoria + oferta','Trayectoria + continuidad','Continuidad / articulación']},
+ ]},
+ {key:'reglas', cls:'sec-reglas', label:'Reglas del proceso', rows:[
+  {actor:'¿Puede avanzar la trayectoria?', cells:['¿Está definida la conducta posterior?','¿La CR permite comprender qué debe ocurrir después?','¿La CR salió efectivamente del emisor?','¿Llegó a un receptor capaz de gestionarla?','¿Alguien transformó la información en decisión de gestión?','¿Comenzó efectivamente la acción necesaria?','¿La persona quedó realmente vinculada a la respuesta?','¿La acción requerida efectivamente ocurrió?','¿La transición puede considerarse completada?']},
+  {actor:'¿Está claro quién responde?', cells:['¿Está definido quién debe emitir CR?','¿Está identificado el destino?','¿Quién responde por el envío efectivo?','¿Existe responsable de revisar la bandeja/canal?','¿Quedó definido quién hará qué y en qué plazo?','¿Existe responsable de ejecutar/seguir la gestión?','¿Quién responde por concretar el acceso?','¿Quién responde por la acción clínica?','¿Quién responde por verificar y cerrar?']},
+  {actor:'¿Existe plazo?', cells:['¿La necesidad tiene horizonte clínico?','¿La prioridad/plazo quedó registrada cuando corresponde?','¿Existe plazo máximo de envío?','¿Existe plazo máximo para ser revisada?','¿La acción quedó asociada a un plazo?','¿La gestión está ocurriendo dentro de plazo?','¿La vinculación ocurrirá antes del límite clínico?','¿La atención ocurrió dentro del plazo requerido?','¿El cierre se realizó oportunamente?']},
+  {actor:'¿Está preparado el siguiente paso?', cells:['¿Requiere exámenes, resultados, medicamentos u otros prerrequisitos?','¿Los prerrequisitos quedaron explícitos en la CR?','¿La información necesaria fue enviada o está accesible?','¿El receptor dispone de la información necesaria?','¿Se identificaron los prerrequisitos para ejecutar la acción?','¿Los prerrequisitos quedaron gestionados o asignados?','¿La persona sabe qué debe llevar? ¿Resultados disponibles?','¿El equipo cuenta con antecedentes para una atención resolutiva?','¿Quedaron resueltos los requerimientos posteriores?']},
+  {actor:'¿La persona sabe qué ocurre?', cells:['¿Comprendió por qué termina/cambia su atención?','¿Conoce destino y próximos pasos?','¿Sabe que no necesita transportar la CR institucionalmente? *','¿Sabe qué esperar y a quién recurrir? *','¿Debe ser informada de alguna decisión?','¿Fue informada de la gestión cuando corresponde?','¿Tiene una instrucción concreta y accionable?','¿Comprende resultado y conducta posterior?','¿Sabe dónde continúa su trayectoria?']},
+  {actor:'¿Existe evidencia?', cells:['¿La decisión quedó registrada?','¿Existe CR emitida?','¿Existe evidencia de envío?','¿Existe evidencia de ingreso?','¿Existe evidencia de revisión y decisión?','¿Existe evidencia de primera gestión?','¿Existe evidencia de contacto/vinculación?','¿Existe evidencia de atención/acción?','¿Existe evidencia de cumplimiento/cierre?']},
+ ]},
+ {key:'control', cls:'sec-control', label:'Datos, tiempos, alertas y escalamiento', rows:[
+  {actor:'Dato / evidencia mínima', cells:['Conducta + necesidad de continuidad','ID CR + tipo + destino + tratamiento + indicaciones + prioridad/plazo + prerrequisitos','Fecha/hora envío + destino','Fecha/hora ingreso','Fecha/hora revisión + clasificación + acción + responsable + plazo','Fecha/hora primera gestión + acción + resultado','Fecha/hora contacto + resultado + citación + instrucciones','Fecha/hora atención + acción realizada + resultado','Fecha/hora cierre + causal + resultado']},
+  {actor:'Tiempo de gestión', cells:[em,'T0→T1 tiempo de emisión','T1→T2 tiempo de envío','T2→T3 tiempo de recepción','T3→T4 tiempo hasta revisión/decisión','T4→T5 tiempo hasta primera gestión efectiva','T5→T6 tiempo hasta vinculación','T6→T7 tiempo hasta continuidad efectiva','T7→T8 tiempo hasta cierre']},
+  {actor:'Alerta / excepción', cells:['CR requerida no indicada/generada','Datos incompletos / destino erróneo / prioridad o prerrequisitos omitidos','No enviada / error de envío','Ingresada pero no revisada','Revisada sin acción, responsable o plazo / revisión tardía','Asignada pero sin gestión / prerrequisito no gestionado / plazo próximo a vencer','No contactable / sin cupo / rechazo / barrera de acceso','NSP / atención no concretada / plazo vencido / continuidad en riesgo','Caso abierto sin evidencia de continuidad / cierre sin causal']},
+  {actor:'Escalamiento', cells:['Jefatura clínica según causal','Corrección por emisor','Responsable funcional / TIC según causal','Responsable receptor','CODE / responsable APS definido','Jefatura / gestión de demanda según causal','Gestión de casos / enlace ECICEP según criterios','Coordinación clínica/red según riesgo','Revisión / reapertura / escalamiento según causal']},
+ ]},
+];
+
+function dotsHtml() {
+  return `<button class="add-dot green" onclick="addTag(this,'green')"></button><button class="add-dot yellow" onclick="addTag(this,'yellow')"></button><button class="add-dot red" onclick="addTag(this,'red')"></button><button class="add-dot blue" onclick="addTag(this,'blue')"></button>`;
+}
+const STATE_LABELS = { existe:'E', noexiste:'NE', nosabemos:'NS', propuesta:'P' };
+function stateBadgeHtml(state) {
+  const cls = state ? 'state-'+state : '';
+  const label = state ? STATE_LABELS[state] : '·';
+  return `<button class="state-badge ${cls}" data-state="${state||''}" onclick="cycleState(this)" title="Estado AS-IS/TO-BE — clic para cambiar">${label}</button>`;
+}
+function cycleState(btn) {
+  const order = [null,'existe','noexiste','nosabemos','propuesta'];
+  const cur = btn.dataset.state || '';
+  const idx = order.indexOf(cur||null);
+  const next = order[(idx+1)%order.length];
+  btn.dataset.state = next || '';
+  btn.textContent = next ? STATE_LABELS[next] : '·';
+  btn.className = 'state-badge ' + (next ? 'state-'+next : '');
+  const td = btn.closest('td');
+  td.classList.remove('td-existe','td-noexiste','td-nosabemos','td-propuesta');
+  if (next) td.classList.add('td-'+next);
+  window._markUnsaved();
+}
+function makeCellHtml(text, state) {
+  const isEmpty = !text || text === em;
+  return `${stateBadgeHtml(state||null)}<div class="cell-wrap"><div class="cell-main ${isEmpty?'empty':''}" contenteditable="${editMode?'true':'false'}">${isEmpty?em:text}</div><div class="cell-add-btns">${dotsHtml()}</div></div>`;
+}
+function buildDataRow(sectionKey, actor, cells, rowCls, fb) {
+  const tr = document.createElement('tr');
+  tr.dataset.section = sectionKey;
+  tr.dataset.fb = fb || '';
+  if (rowCls) tr.className = rowCls;
+  const ac = document.createElement('td'); ac.className = 'actor-cell'; ac.style.position='relative';
+  const ops = document.createElement('div'); ops.className = 'row-ops';
+  ops.innerHTML = `<button class="row-op-btn" onclick="insertRowBefore(this)" title="Insertar fila antes">▲+</button><button class="row-op-btn" onclick="insertRowAfter(this)" title="Insertar fila después">+▼</button><button class="row-op-btn del" onclick="deleteRow(this)" title="Eliminar fila">✕</button>`;
+  ac.appendChild(ops);
+  const acText = document.createElement('span'); acText.className='actor-text'; acText.contentEditable = editMode?'true':'false'; acText.textContent = actor;
+  ac.appendChild(acText);
+  if (fb) {
+    const b = document.createElement('span'); b.className = 'fb-badge fb-'+fb;
+    b.textContent = fb==='front' ? '● visible' : '○ backstage';
+    b.title = fb==='front' ? 'Contacta directamente a la persona en algún tramo' : 'Nunca contacta directamente a la persona';
+    ac.appendChild(b);
+  }
+  tr.appendChild(ac);
+  const n = getColCount();
+  for (let i=0;i<n;i++) {
+    const td = document.createElement('td');
+    td.innerHTML = makeCellHtml(cells && cells[i] ? cells[i] : em, null);
+    tr.appendChild(td);
+  }
+  return tr;
+}
+function buildDividerRow(sectionKey, label) {
+  const tr = document.createElement('tr');
+  tr.className = 'line-divider'; tr.dataset.section = sectionKey;
+  tr.innerHTML = `<td colspan="100">${label}</td>`;
+  return tr;
+}
+function buildSepRow(sectionKey, cls, label) {
+  const sep = document.createElement('tr');
+  sep.className = 'section-sep'; sep.dataset.section = sectionKey;
+  sep.innerHTML = `<td colspan="100" class="${cls}"><button class="sec-toggle" onclick="toggleSectionCollapse(this)">▾</button><span class="sec-label">${label}</span><div class="row-controls"><button class="row-ctrl-btn" onclick="addRowAfterSection(this)">+ fila</button><button class="row-ctrl-btn del" onclick="deleteSection(this)">✕</button></div></td>`;
+  return sep;
+}
+function seedTable() {
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  SEED_SECTIONS.forEach(sec => {
+    tbody.appendChild(buildSepRow(sec.key, sec.cls, sec.label));
+    sec.rows.forEach(r => {
+      if (r.type === 'divider') tbody.appendChild(buildDividerRow(sec.key, r.label));
+      else tbody.appendChild(buildDataRow(sec.key, r.actor, r.cells, r.rowCls, r.fb));
+    });
+  });
+}
+
+// ── PERSISTENCIA LOCAL ──────────────────────────────────────────────────
+const LS_KEY = 'cr_blueprint_v1';
+const LS_VERSIONS = 'cr_blueprint_versions_v1';
+
+function serializeState() {
+  const cols = [];
+  document.querySelectorAll('#thead-row th.col-stage').forEach(th => {
+    cols.push({ title: th.querySelector('.stage-title')?.textContent||'', sub: th.querySelector('.stage-sub')?.textContent||'' });
+  });
+  const rows = [];
+  document.querySelectorAll('#tbody tr').forEach(tr => {
+    if (tr.classList.contains('section-sep')) {
+      const td = tr.querySelector('td');
+      rows.push({ type:'sep', section: tr.dataset.section, cls: td.className, label: td.querySelector('.sec-label')?.textContent?.trim() || '' });
+    } else if (tr.classList.contains('line-divider')) {
+      rows.push({ type:'divider', section: tr.dataset.section, label: tr.querySelector('td').textContent });
+    } else {
+      const cells = [];
+      tr.querySelectorAll('td').forEach((td,i) => {
+        if (i===0) { cells.push({ actor: (td.querySelector('.actor-text')?.textContent || td.textContent).trim() }); return; }
+        const main = td.querySelector('.cell-main')?.innerHTML || '';
+        const state = td.dataset.state || td.querySelector('.state-badge')?.dataset.state || '';
+        const tags = [];
+        td.querySelectorAll('.tag-green,.tag-yellow,.tag-red,.tag-blue').forEach(tag => {
+          let type='red';
+          if (tag.classList.contains('tag-green')) type='green';
+          else if (tag.classList.contains('tag-yellow')) type='yellow';
+          else if (tag.classList.contains('tag-blue')) type='blue';
+          tags.push({ type, text: tag.firstChild?.textContent?.trim()||'' });
+        });
+        cells.push({ main, tags, state });
+      });
+      rows.push({ type:'data', section: tr.dataset.section, rowCls: tr.className, fb: tr.dataset.fb||'', cells });
+    }
+  });
+  return { cols, rows };
+}
+
+function restoreState(state) {
+  const { cols, rows } = state;
+  const tr = document.querySelector('#thead-row tr');
+  tr.querySelectorAll('th.col-stage').forEach(th => th.remove());
+  cols.forEach((col,i) => {
+    const th = document.createElement('th'); th.className='col-stage'; th.dataset.col=i;
+    th.innerHTML = `<span class="stage-title">${col.title}</span><span class="stage-sub">${col.sub}</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(${i})">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(${i})">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(${i})">✕</button></div>`;
+    tr.appendChild(th);
+  });
+  const tbody = document.getElementById('tbody'); tbody.innerHTML='';
+  rows.forEach(row => {
+    if (row.type==='sep') {
+      tbody.appendChild(buildSepRow(row.section, row.cls, row.label));
+    } else if (row.type==='divider') {
+      tbody.appendChild(buildDividerRow(row.section, row.label));
+    } else {
+      const dtr = document.createElement('tr'); dtr.dataset.section = row.section; dtr.dataset.fb = row.fb||''; if (row.rowCls) dtr.className = row.rowCls;
+      row.cells.forEach((cell,i) => {
+        const td = document.createElement('td');
+        if (i===0) {
+          td.className='actor-cell'; td.style.position='relative';
+          const ops=document.createElement('div'); ops.className='row-ops';
+          ops.innerHTML=`<button class="row-op-btn" onclick="insertRowBefore(this)" title="Insertar fila antes">▲+</button><button class="row-op-btn" onclick="insertRowAfter(this)" title="Insertar fila después">+▼</button><button class="row-op-btn del" onclick="deleteRow(this)" title="Eliminar fila">✕</button>`;
+          td.appendChild(ops);
+          const acText=document.createElement('span'); acText.className='actor-text'; acText.contentEditable=editMode?'true':'false'; acText.textContent=cell.actor;
+          td.appendChild(acText);
+          if (row.fb) {
+            const b=document.createElement('span'); b.className='fb-badge fb-'+row.fb;
+            b.textContent = row.fb==='front' ? '● visible' : '○ backstage';
+            b.title = row.fb==='front' ? 'Contacta directamente a la persona en algún tramo' : 'Nunca contacta directamente a la persona';
+            td.appendChild(b);
+          }
+        }
+        else {
+          const map = {green:'tag-green',yellow:'tag-yellow',red:'tag-red',blue:'tag-blue'};
+          const tags = (cell.tags||[]).map(t=>`<span class="${map[t.type]||'tag-red'}" contenteditable="${editMode?'true':'false'}">${t.text}<span class="del-tag" onclick="removeTag(this)">✕</span></span>`).join('');
+          const isEmpty = !cell.main || cell.main===em;
+          const st = cell.state || '';
+          if (st) td.classList.add('td-'+st);
+          td.innerHTML = `${stateBadgeHtml(st||null)}<div class="cell-wrap"><div class="cell-main ${isEmpty?'empty':''}" contenteditable="${editMode?'true':'false'}">${isEmpty?em:cell.main}</div>${tags}<div class="cell-add-btns">${dotsHtml()}</div></div>`;
+        }
+        dtr.appendChild(td);
+      });
+      tbody.appendChild(dtr);
+    }
+  });
+  window._hasUnsaved = false; updateUnsavedIndicator();
+}
+
+function setStatus(type, msg) {
+  const dots = { ok:'dot-ok', warn:'dot-warn', err:'dot-err', pulse:'dot-pulse' };
+  document.getElementById('fb-status').innerHTML = `<span class="status-dot ${dots[type]}"></span>${msg}`;
+}
+
+function getVersions() { try { return JSON.parse(localStorage.getItem(LS_VERSIONS)||'[]'); } catch(e){ return []; } }
+function saveVersions(list) { localStorage.setItem(LS_VERSIONS, JSON.stringify(list)); }
+
+function saveVersion(name, notes) {
+  const state = serializeState();
+  const versions = getVersions();
+  const v = { id: 'v_'+Date.now(), name, notes, state, ts: new Date().toISOString() };
+  versions.unshift(v);
+  saveVersions(versions);
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
+  window._hasUnsaved = false; updateUnsavedIndicator();
+  const now = new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+  setStatus('ok', `Guardado local · ${now}`);
+  renderVersionList();
+}
+
+function renderVersionList() {
+  const list = document.getElementById('version-list');
+  const versions = getVersions();
+  list.innerHTML = '';
+  if (!versions.length) { list.innerHTML = '<span style="color:var(--text-xs)">Sin versiones</span>'; return; }
+  versions.forEach(v => {
+    const chip = document.createElement('button');
+    chip.className = 'ver-chip';
+    chip.textContent = v.name;
+    chip.title = v.notes || '';
+    chip.onclick = () => loadVersion(v.id, chip);
+    list.appendChild(chip);
+  });
+}
+
+function loadVersion(id, chip) {
+  if (window._hasUnsaved && !confirm('Hay cambios sin guardar. ¿Cargar esta versión de todas formas?')) return;
+  const versions = getVersions();
+  const v = versions.find(x => x.id === id);
+  if (!v) return;
+  restoreState(v.state);
+  document.querySelectorAll('.ver-chip').forEach(c => c.classList.remove('active'));
+  if (chip) chip.classList.add('active');
+  setStatus('ok', 'Versión cargada: ' + v.name);
+}
+
+function loadLatest() {
+  const raw = localStorage.getItem(LS_KEY);
+  if (raw) { try { restoreState(JSON.parse(raw)); setStatus('ok','Guardado local — última edición restaurada'); return; } catch(e){} }
+  seedTable();
+  setStatus('ok', 'Guardado local — contenido base V0.2');
+}
+
+const AUTOSAVE_INTERVAL = 3*60;
+let autosaveSecondsLeft = AUTOSAVE_INTERVAL;
+function tickAutosave() {
+  if (!window._hasUnsaved) { autosaveSecondsLeft = AUTOSAVE_INTERVAL; updateTimerDisplay(); return; }
+  autosaveSecondsLeft--; updateTimerDisplay();
+  if (autosaveSecondsLeft <= 0) {
+    autosaveSecondsLeft = AUTOSAVE_INTERVAL;
+    const now = new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+    saveVersion('Autoguardado ' + now, '');
+  }
+}
+function updateTimerDisplay() {
+  const el = document.getElementById('autosave-timer');
+  if (!window._hasUnsaved) { el.textContent=''; return; }
+  const m = Math.floor(autosaveSecondsLeft/60), s = autosaveSecondsLeft%60;
+  el.textContent = `· autoguardado en ${m}:${s.toString().padStart(2,'0')}`;
+}
+setInterval(tickAutosave, 1000);
+function updateUnsavedIndicator() {
+  document.getElementById('unsaved-indicator').innerHTML = window._hasUnsaved ? '<span class="unsaved-badge">● Cambios sin guardar</span>' : '';
+}
+window._markUnsaved = function() {
+  if (!window._hasUnsaved) { window._hasUnsaved = true; autosaveSecondsLeft = AUTOSAVE_INTERVAL; updateUnsavedIndicator(); }
+};
+
+// ── EDICIÓN / TOOLBAR (idéntico patrón al blueprint de Centro del Cáncer) ──
+let editMode = false;
+const undoStack = []; const MAX_UNDO = 20;
+function pushUndo() {
+  undoStack.push(document.getElementById('main-table').innerHTML);
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+  document.getElementById('undo-btn').disabled = false;
+  document.getElementById('undo-btn').style.opacity = '1';
+}
+function undo() {
+  if (!undoStack.length) return;
+  document.getElementById('main-table').innerHTML = undoStack.pop();
+  if (!undoStack.length) { document.getElementById('undo-btn').disabled=true; document.getElementById('undo-btn').style.opacity='.4'; }
+  window._markUnsaved();
+}
+function toggleEdit() {
+  editMode = !editMode;
+  document.getElementById('edit-label').textContent = editMode ? 'Desactivar edición' : 'Editar';
+  const ce = editMode ? 'true' : 'false';
+  document.querySelectorAll('.cell-main,.tag-green,.tag-yellow,.tag-red,.tag-blue,.actor-text,.stage-title,.stage-sub').forEach(el => el.contentEditable = ce);
+  document.querySelectorAll('tr.section-sep .sec-label').forEach(s => { s.contentEditable = ce; });
+}
+function openSaveModal() {
+  document.getElementById('save-name').value=''; document.getElementById('save-notes').value='';
+  document.getElementById('modal-save').style.display='flex';
+  setTimeout(()=>document.getElementById('save-name').focus(),50);
+}
+function confirmSave() {
+  const name = document.getElementById('save-name').value.trim() || new Date().toLocaleString('es-CL');
+  const notes = document.getElementById('save-notes').value.trim();
+  closeModals(); saveVersion(name, notes);
+}
+function getColCount() { return document.querySelectorAll('#thead-row th.col-stage').length; }
+function updateColIndices() {
+  document.querySelectorAll('#thead-row th.col-stage').forEach((th,i) => {
+    th.dataset.col = i;
+    const b = th.querySelectorAll('.col-ctrl-btn');
+    if (b.length>=3) { b[0].setAttribute('onclick',`addColBefore(${i})`); b[1].setAttribute('onclick',`addColAfter(${i})`); b[2].setAttribute('onclick',`deleteCol(${i})`); }
+  });
+}
+let pendingColAction=null;
+function addColumn(){ pendingColAction={type:'append'}; showColModal('Nueva etapa (al final)'); }
+function addColBefore(i){ pendingColAction={type:'before',idx:i}; showColModal(`Nueva etapa (antes de col. ${i+1})`); }
+function addColAfter(i){ pendingColAction={type:'after',idx:i}; showColModal(`Nueva etapa (después de col. ${i+1})`); }
+function showColModal(title){
+  document.getElementById('modal-col-title').textContent=title;
+  document.getElementById('new-col-title').value=''; document.getElementById('new-col-sub').value='';
+  document.getElementById('modal-col').style.display='flex';
+  setTimeout(()=>document.getElementById('new-col-title').focus(),50);
+}
+function confirmAddCol() {
+  const title = document.getElementById('new-col-title').value.trim(); if (!title) return;
+  pushUndo();
+  const sub = document.getElementById('new-col-sub').value.trim();
+  const newTh = document.createElement('th'); newTh.className='col-stage';
+  newTh.innerHTML = `<span class="stage-title">${title}</span>${sub?`<span class="stage-sub">${sub}</span>`:''}<div class="col-controls"><button class="col-ctrl-btn">◀+</button><button class="col-ctrl-btn">+▶</button><button class="col-ctrl-btn">✕</button></div>`;
+  const hr = document.querySelector('#thead-row tr'); const ths = hr.querySelectorAll('th.col-stage');
+  if (pendingColAction.type==='append') hr.appendChild(newTh);
+  else if (pendingColAction.type==='before') hr.insertBefore(newTh, ths[pendingColAction.idx]);
+  else hr.insertBefore(newTh, ths[pendingColAction.idx].nextSibling);
+  document.querySelectorAll('#tbody tr:not(.section-sep)').forEach(row => {
+    const tds = row.querySelectorAll('td:not(.actor-cell)');
+    const td = document.createElement('td'); td.innerHTML = makeCellHtml(em);
+    if (pendingColAction.type==='append') row.appendChild(td);
+    else if (pendingColAction.type==='before') row.insertBefore(td, tds[pendingColAction.idx]);
+    else row.insertBefore(td, tds[pendingColAction.idx]?.nextSibling||null);
+  });
+  updateColIndices(); closeModals(); window._markUnsaved();
+}
+function deleteCol(i) {
+  if (getColCount()<=1) return alert('Debe quedar al menos una columna.');
+  if (!confirm('¿Eliminar esta columna?')) return;
+  document.querySelectorAll('#thead-row th.col-stage')[i].remove();
+  document.querySelectorAll('#tbody tr:not(.section-sep)').forEach(row => { const tds=row.querySelectorAll('td:not(.actor-cell)'); if (tds[i]) tds[i].remove(); });
+  updateColIndices(); window._markUnsaved();
+}
+function openAddRowModal() {
+  const sel = document.getElementById('new-section'); sel.innerHTML='<option value="">— elegir sección —</option>';
+  document.querySelectorAll('#tbody tr.section-sep').forEach(row => {
+    const td = row.querySelector('td');
+    const label = (td.querySelector('.sec-label')?.textContent || '').trim();
+    const opt = document.createElement('option'); opt.value=row.dataset.section; opt.textContent=label; sel.appendChild(opt);
+  });
+  document.getElementById('new-actor').value='';
+  document.getElementById('modal-row').style.display='flex';
+  setTimeout(()=>document.getElementById('new-actor').focus(),50);
+}
+function confirmAddRow() {
+  const actor = document.getElementById('new-actor').value.trim(); if (!actor) return;
+  const section = document.getElementById('new-section').value; if (!section) { alert('Elige una sección.'); return; }
+  pushUndo();
+  const rows = Array.from(document.querySelectorAll('#tbody tr'));
+  let last=null, started=false;
+  for (const r of rows) {
+    if (r.classList.contains('section-sep') && r.dataset.section===section) { started=true; continue; }
+    if (started) { if (r.classList.contains('section-sep')) break; last=r; }
+  }
+  const ref = last || document.querySelector(`#tbody tr.section-sep[data-section="${section}"]`);
+  ref.after(buildDataRow(section, actor));
+  closeModals(); window._markUnsaved();
+}
+function insertRowBefore(btn) {
+  const tr = btn.closest('tr'); const section = tr.dataset.section;
+  const actor = prompt('Nombre del actor / fila:'); if (actor===null) return;
+  pushUndo();
+  tr.parentNode.insertBefore(buildDataRow(section, actor || 'Nueva fila'), tr);
+  window._markUnsaved();
+}
+function insertRowAfter(btn) {
+  const tr = btn.closest('tr'); const section = tr.dataset.section;
+  const actor = prompt('Nombre del actor / fila:'); if (actor===null) return;
+  pushUndo();
+  tr.after(buildDataRow(section, actor || 'Nueva fila'));
+  window._markUnsaved();
+}
+function deleteRow(btn) {
+  if (!confirm('¿Eliminar esta fila?')) return;
+  pushUndo();
+  btn.closest('tr').remove();
+  window._markUnsaved();
+}
+function addRowAfterSection(btn) {
+  const sep = btn.closest('tr.section-sep'); const key = sep.dataset.section;
+  const actor = prompt('Nombre del actor / fila:'); if (!actor) return;
+  pushUndo();
+  const rows = Array.from(document.querySelectorAll('#tbody tr')); let last=sep, started=false;
+  for (const r of rows) { if (r===sep) { started=true; continue; } if (started) { if (r.classList.contains('section-sep')) break; last=r; } }
+  last.after(buildDataRow(key, actor)); window._markUnsaved();
+}
+function openAddSectionModal() {
+  const pos = document.getElementById('new-section-pos'); pos.innerHTML='<option value="__end__">Al final</option>';
+  document.querySelectorAll('#tbody tr.section-sep').forEach(row => {
+    const td = row.querySelector('td'); const label=(td.querySelector('.sec-label')?.textContent||'').trim();
+    const opt = document.createElement('option'); opt.value=row.dataset.section; opt.textContent='Antes de: '+label; pos.appendChild(opt);
+  });
+  document.getElementById('new-section-label').value='';
+  document.getElementById('modal-section').style.display='flex';
+  setTimeout(()=>document.getElementById('new-section-label').focus(),50);
+}
+function confirmAddSection() {
+  const label = document.getElementById('new-section-label').value.trim(); if (!label) return;
+  const cls = document.getElementById('new-section-color').value;
+  const posVal = document.getElementById('new-section-pos').value;
+  pushUndo();
+  const key = 'sec_'+Date.now();
+  const sep = buildSepRow(key, cls, label);
+  const dataRow = buildDataRow(key, 'Nuevo actor', []);
+  const tbody = document.getElementById('tbody');
+  if (posVal==='__end__') { tbody.appendChild(sep); tbody.appendChild(dataRow); }
+  else { const ref = document.querySelector(`#tbody tr.section-sep[data-section="${posVal}"]`); tbody.insertBefore(sep, ref); tbody.insertBefore(dataRow, ref); }
+  closeModals(); window._markUnsaved();
+}
+function deleteSection(btn) {
+  if (!confirm('¿Eliminar esta sección y sus filas?')) return;
+  pushUndo();
+  const key = btn.closest('tr.section-sep').dataset.section;
+  document.querySelectorAll(`#tbody tr[data-section="${key}"]`).forEach(r=>r.remove());
+  window._markUnsaved();
+}
+function addTag(btn, type) {
+  const wrap = btn.closest('.cell-wrap'); const addBtns = btn.closest('.cell-add-btns');
+  const tag = document.createElement('span');
+  const map = {green:'tag-green',yellow:'tag-yellow',red:'tag-red',blue:'tag-blue'};
+  tag.className = map[type]; tag.contentEditable = editMode?'true':'false';
+  tag.innerHTML = 'Texto<span class="del-tag" onclick="removeTag(this)">✕</span>';
+  wrap.insertBefore(tag, addBtns); window._markUnsaved();
+  const r = document.createRange(); r.setStart(tag.firstChild,0); r.setEnd(tag.firstChild,tag.firstChild.length);
+  const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); tag.focus();
+}
+function removeTag(btn) { btn.closest('.tag-green,.tag-yellow,.tag-red,.tag-blue').remove(); window._markUnsaved(); }
+function closeModals() { document.querySelectorAll('.modal-overlay').forEach(m=>m.style.display='none'); }
+document.addEventListener('keydown', e => { if (e.key==='Escape') closeModals(); });
+document.addEventListener('input', e => { if (e.target.closest('#tbody') || e.target.closest('#thead-row')) window._markUnsaved(); });
+
+window._hasUnsaved = false;
+loadLatest();
+renderVersionList();
+
+// ── PERFILES: VISUALIZADOR / EDITOR ─────────────────────────────────────
+const EDITOR_PASSWORD = 'hpm';
+let userRole = null;
+
+function enterAsViewer() { userRole = 'viewer'; finishLogin(); }
+function showEditorPasswordPrompt() {
+  document.getElementById('editor-pw-box').style.display = 'block';
+  document.getElementById('editor-pw').focus();
+}
+function confirmEditorLogin() {
+  const pw = document.getElementById('editor-pw').value;
+  if (pw === EDITOR_PASSWORD) { userRole = 'editor'; finishLogin(); }
+  else { document.getElementById('pw-error').style.display = 'block'; }
+}
+function finishLogin() {
+  sessionStorage.setItem('cr_role', userRole);
+  document.getElementById('login-gate').style.display = 'none';
+  applyRoleUI();
+}
+function applyRoleUI() {
+  const isEditor = userRole === 'editor';
+  document.body.classList.toggle('role-viewer', !isEditor);
+  document.getElementById('role-badge').textContent = isEditor ? '✏️ Editor' : '👁 Visualizador';
+  if (!isEditor && editMode) toggleEdit();
+}
+function changeRole() {
+  if (window._hasUnsaved && !confirm('Hay cambios sin guardar. ¿Cambiar de perfil de todas formas?')) return;
+  sessionStorage.removeItem('cr_role'); userRole = null;
+  document.getElementById('editor-pw-box').style.display = 'none';
+  document.getElementById('editor-pw').value = '';
+  document.getElementById('pw-error').style.display = 'none';
+  document.getElementById('login-gate').style.display = 'flex';
+}
+(function initRole() {
+  const saved = sessionStorage.getItem('cr_role');
+  if (saved) { userRole = saved; document.getElementById('login-gate').style.display = 'none'; applyRoleUI(); }
+})();
+
+// ── COLAPSAR / EXPANDIR SECCIONES ───────────────────────────────────────
+function collapseSection(sepRow, collapse) {
+  sepRow.classList.toggle('collapsed', collapse);
+  const btn = sepRow.querySelector('.sec-toggle'); if (btn) btn.textContent = collapse ? '▸' : '▾';
+  let el = sepRow.nextElementSibling;
+  while (el && !el.classList.contains('section-sep')) { el.style.display = collapse ? 'none' : ''; el = el.nextElementSibling; }
+}
+function toggleSectionCollapse(btn) {
+  const sep = btn.closest('tr.section-sep');
+  collapseSection(sep, !sep.classList.contains('collapsed'));
+}
+function toggleCollapseAll() {
+  const seps = document.querySelectorAll('#tbody tr.section-sep');
+  const anyExpanded = Array.from(seps).some(s => !s.classList.contains('collapsed'));
+  seps.forEach(s => collapseSection(s, anyExpanded));
+  document.getElementById('collapse-toggle-btn').textContent = anyExpanded ? 'Expandir todo' : 'Colapsar todo';
+}
+</script>
+</body>
+</html>
