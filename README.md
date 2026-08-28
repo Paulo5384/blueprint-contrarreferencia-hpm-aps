@@ -27,7 +27,9 @@ Navegadores en Red / Unidad de Gestión Territorial (UGT)
 
 ## Estado del guardado
 
-Las versiones se guardan en `localStorage` del navegador — funcionan de inmediato pero no sincronizan entre dispositivos ni entre editores. Migración a Firebase/Firestore pendiente para persistencia compartida.
+Las versiones se guardan en **Firebase Firestore** (proyecto `blueprint-cr-hpm`, colección `versiones_cr`) — sincroniza entre dispositivos y entre editores en tiempo real. Autoguardado cada 3 minutos mientras haya cambios sin guardar.
+
+**Nota de seguridad:** las reglas de Firestore están abiertas (`allow read, write: if true`) porque el control de acceso real lo da el perfil Editor con contraseña dentro del propio blueprint, no Firebase Auth. El `apiKey` visible en el código no es secreto — es normal en apps Firebase del lado del cliente — pero cualquiera con la URL de Firestore podría leer o escribir la colección directamente. Aceptable para un taller interno; no usar así si el contenido fuera sensible o de acceso restringido por ley.
 
 ## Base normativa y conceptual
 
