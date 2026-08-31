@@ -295,7 +295,9 @@
 <footer>
   <strong>Hospital Puerto Montt · Servicio de Salud del Reloncaví</strong> · UGT / Navegadores en Red · Blueprint V0.2 — base ORD. N°2301 y Protocolo Res. Exenta N°6041-2025, en diálogo con MGIAA v2.0<br>
   <span style="opacity:.8">Las filas 🔵🟠🔴 son un <b>lente de lectura transversal</b> sobre el proceso — no reescriben lo que hace cada actor por tipo de CR. Lo que cambia entre rutas es el ritmo, el plazo y el nivel de seguimiento; el actor responsable en cada etapa es el mismo.</span><br>
-  <span style="opacity:.8">"Responsabilidad primaria" describe el nivel operativo de cada etapa — no reasigna la continuidad como responsabilidad de una unidad. Según el MGIAA, la continuidad es resultado de la gobernanza del proceso completo, no de ningún actor de esta tabla por sí solo.</span>
+  <span style="opacity:.8">"Responsabilidad primaria" describe el nivel operativo de cada etapa — no reasigna la continuidad como responsabilidad de una unidad. Según el MGIAA, la continuidad es resultado de la gobernanza del proceso completo, no de ningún actor de esta tabla por sí solo.</span><br>
+  <span style="display:block;margin-top:6px;font-weight:600;color:var(--text-s)">Diseño conceptual y desarrollo funcional: Paulo Muñoz Braüchi · Navegadores en Red / UGT · Hospital Puerto Montt</span>
+  <span style="display:block;font-size:9px;opacity:.7">Documento de trabajo interno V0.2, sujeto a validación con APS/SSDR — no constituye instrumento normativo oficial. Uso interno del Servicio de Salud del Reloncaví.</span>
 </footer>
 
 <div id="modal-save" class="modal-overlay" style="display:none">
@@ -471,8 +473,7 @@ const em = '—';
 const SEED_COLS = 9;
 const SEED_SECTIONS = [
  {key:'actores', cls:'sec-actores', label:'Trayectoria y actores', rows:[
-  {actor:'Persona / cuidador', cells:['Recibe explicación de conducta, continuidad y próximos pasos','Conoce que será contrarreferida, destino y qué debería ocurrir','No debiera depender de transportar físicamente la CR','Espera activación del proceso por receptor','Puede ser contactada para complementar información','Recibe orientación sobre gestión','Recibe contacto, citación, instrucciones y requisitos para atención','Accede a control, tratamiento, examen u otra acción requerida','Conoce resultado, plan posterior y dónde continuar']},
-  {type:'divider', label:'Línea de interacción — contacto directo con la persona'},
+  {actor:'Persona / cuidador', isCustomer:true, cells:['Recibe explicación de conducta, continuidad y próximos pasos','Conoce que será contrarreferida, destino y qué debería ocurrir','No debiera depender de transportar físicamente la CR','Espera activación del proceso por receptor','Puede ser contactada para complementar información','Recibe orientación sobre gestión','Recibe contacto, citación, instrucciones y requisitos para atención','Accede a control, tratamiento, examen u otra acción requerida','Conoce resultado, plan posterior y dónde continuar']},
   {actor:'Especialista HPM', fb:'front', cells:['Define conducta, necesidad de continuidad, tipo de CR y destino clínico','Registra CR: situación clínica, tratamiento, indicaciones, acción requerida, prioridad/plazo y prerrequisitos cuando corresponda','Asegura correcto registro para su envío/disponibilización',em,'Resuelve dudas clínicas o complementa información cuando corresponda','Participa excepcionalmente ante necesidad de redefinición clínica',em,em,'Finaliza responsabilidad clínica según criterios definidos']},
   {actor:'Sistema HPM / EXPERTOS / RCE', fb:'back', cells:['Registra atención y decisión','Registra CR y datos obligatorios','Envía/disponibiliza CR al destino','Registra ingreso/puesta a disposición del receptor','Registra revisión, clasificación, decisión, responsable y plazo','Registra acciones/cambios de estado','Registra contacto/citación si existe integración','Vincula atención posterior si existe interoperabilidad','Registra estado final/cierre']},
   {actor:'CODE / función receptora APS *', fb:'back', cells:[em,em,em,'Recibe/dispone de CR en canal o bandeja definida','Revisa, clasifica, identifica requerimientos y prerrequisitos, determina acción, prioridad, responsable y plazo','Asigna/supervisa gestión según circuito','Monitorea avance cuando corresponda','Verifica cumplimiento según ruta','Confirma resultado/cierre del circuito']},
@@ -547,18 +548,20 @@ function makeCellHtml(text, state) {
   const isEmpty = !text || text === em;
   return `${stateBadgeHtml(state||null)}<div class="cell-wrap"><div class="cell-main ${isEmpty?'empty':''}" contenteditable="${editMode?'true':'false'}">${isEmpty?em:text}</div><div class="cell-add-btns">${dotsHtml()}</div></div>`;
 }
-function buildDataRow(sectionKey, actor, cells, rowCls, fb) {
+function buildDataRow(sectionKey, actor, cells, rowCls, fb, isCustomer) {
   const tr = document.createElement('tr');
   tr.dataset.section = sectionKey;
-  tr.dataset.fb = fb || '';
+  tr.dataset.isCustomer = isCustomer ? 'true' : '';
+  tr.dataset.fb = isCustomer ? '' : (fb || '');
   if (rowCls) tr.className = rowCls;
   const ac = document.createElement('td'); ac.className = 'actor-cell';
   const ops = document.createElement('div'); ops.className = 'row-ops';
-  ops.innerHTML = `<button class="row-op-btn" onclick="toggleFb(this)" title="Cambiar visible / backstage">👁</button><button class="row-op-btn" onclick="insertRowBefore(this)" title="Insertar fila antes">▲+</button><button class="row-op-btn" onclick="insertRowAfter(this)" title="Insertar fila después">+▼</button><button class="row-op-btn del" onclick="deleteRow(this)" title="Eliminar fila">✕</button>`;
+  const fbBtn = (isCustomer || sectionKey!=='actores') ? '' : `<button class="row-op-btn" onclick="toggleFb(this)" title="Cambiar visible / backstage">👁</button>`;
+  ops.innerHTML = `${fbBtn}<button class="row-op-btn" onclick="insertRowBefore(this)" title="Insertar fila antes">▲+</button><button class="row-op-btn" onclick="insertRowAfter(this)" title="Insertar fila después">+▼</button><button class="row-op-btn del" onclick="deleteRow(this)" title="Eliminar fila">✕</button>`;
   ac.appendChild(ops);
   const acText = document.createElement('span'); acText.className='actor-text'; acText.contentEditable = editMode?'true':'false'; acText.textContent = actor;
   ac.appendChild(acText);
-  if (fb) {
+  if (fb && !isCustomer) {
     const b = document.createElement('span'); b.className = 'fb-badge fb-'+fb;
     b.textContent = fb==='front' ? '● visible' : '○ backstage';
     b.title = fb==='front' ? 'Contacta directamente a la persona en algún tramo' : 'Nunca contacta directamente a la persona';
@@ -576,8 +579,31 @@ function buildDataRow(sectionKey, actor, cells, rowCls, fb) {
 function buildDividerRow(sectionKey, label) {
   const tr = document.createElement('tr');
   tr.className = 'line-divider'; tr.dataset.section = sectionKey;
-  tr.innerHTML = `<td colspan="100">${label}</td>`;
+  tr.innerHTML = `<td colspan="100" title="Esta línea separa a la persona (arriba) de los actores institucionales (abajo). Es distinta de los badges ●visible/○backstage de cada fila, que indican si ESE actor institucional contacta directamente a la persona en algún tramo del proceso.">${label}</td>`;
   return tr;
+}
+function resortActoresSection() {
+  const tbody = document.getElementById('tbody');
+  const sepRow = tbody.querySelector('tr.section-sep[data-section="actores"]');
+  if (!sepRow) return;
+  const rows = [];
+  let el = sepRow.nextElementSibling;
+  while (el && !el.classList.contains('section-sep')) {
+    const next = el.nextElementSibling;
+    if (!el.classList.contains('line-divider')) rows.push(el);
+    el.remove();
+    el = next;
+  }
+  const customerRows = rows.filter(r => r.dataset.isCustomer === 'true');
+  const frontRows = rows.filter(r => r.dataset.isCustomer !== 'true' && r.dataset.fb === 'front');
+  const backRows = rows.filter(r => r.dataset.isCustomer !== 'true' && r.dataset.fb !== 'front');
+  let anchor = sepRow;
+  const put = (r) => { anchor.after(r); anchor = r; };
+  customerRows.forEach(put);
+  put(buildDividerRow('actores', 'Línea de interacción — contacto directo con la persona'));
+  frontRows.forEach(put);
+  if (frontRows.length) put(buildDividerRow('actores', 'Línea de visibilidad — bajo esta línea, el actor no contacta directamente a la persona'));
+  backRows.forEach(put);
 }
 function buildSepRow(sectionKey, cls, label) {
   const sep = document.createElement('tr');
@@ -668,9 +694,10 @@ function seedTable() {
     tbody.appendChild(buildSepRow(sec.key, sec.cls, sec.label));
     sec.rows.forEach(r => {
       if (r.type === 'divider') tbody.appendChild(buildDividerRow(sec.key, r.label));
-      else tbody.appendChild(buildDataRow(sec.key, r.actor, r.cells, r.rowCls, r.fb));
+      else tbody.appendChild(buildDataRow(sec.key, r.actor, r.cells, r.rowCls, r.fb, r.isCustomer));
     });
   });
+  resortActoresSection();
   updateProgressCounter();
   if (typeof clearSearchFilter === 'function') clearSearchFilter();
 }
@@ -710,7 +737,7 @@ function serializeState() {
       const cells = [];
       tr.querySelectorAll('td').forEach((td,i) => {
         if (i===0) { cells.push({ actor: (td.querySelector('.actor-text')?.textContent || td.textContent).trim() }); return; }
-        const main = td.querySelector('.cell-main')?.innerHTML || '';
+        const main = td.querySelector('.cell-main')?.textContent || '';
         const stateBadge = td.querySelector('.state-badge');
         const state = td.dataset.state || stateBadge?.dataset.state || '';
         const stateBy = stateBadge?.dataset.by || '';
@@ -726,12 +753,20 @@ function serializeState() {
         });
         cells.push({ main, tags, state, stateBy, stateAt });
       });
-      rows.push({ type:'data', section: tr.dataset.section, rowCls: tr.className, fb: tr.dataset.fb||'', cells });
+      rows.push({ type:'data', section: tr.dataset.section, rowCls: tr.className, fb: tr.dataset.fb||'', isCustomer: tr.dataset.isCustomer==='true', cells });
     }
   });
   return { cols, rows };
 }
 
+function stripToPlainText(html) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html || '';
+  return (tmp.textContent || tmp.innerText || '').trim();
+}
+function escapeHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 function restoreState(state) {
   const { cols, rows } = state;
   const tr = document.querySelector('#thead-row tr');
@@ -748,17 +783,20 @@ function restoreState(state) {
     } else if (row.type==='divider') {
       tbody.appendChild(buildDividerRow(row.section, row.label));
     } else {
-      const dtr = document.createElement('tr'); dtr.dataset.section = row.section; dtr.dataset.fb = row.fb||''; if (row.rowCls) dtr.className = row.rowCls;
+      const actorLabel = (row.cells[0]?.actor || '').trim().toLowerCase();
+      const isCustomerRow = row.isCustomer || actorLabel === 'persona / cuidador';
+      const dtr = document.createElement('tr'); dtr.dataset.section = row.section; dtr.dataset.isCustomer = isCustomerRow ? 'true' : ''; dtr.dataset.fb = isCustomerRow ? '' : (row.fb||''); if (row.rowCls) dtr.className = row.rowCls;
       row.cells.forEach((cell,i) => {
         const td = document.createElement('td');
         if (i===0) {
           td.className='actor-cell';
           const ops=document.createElement('div'); ops.className='row-ops';
-          ops.innerHTML=`<button class="row-op-btn" onclick="toggleFb(this)" title="Cambiar visible / backstage">👁</button><button class="row-op-btn" onclick="insertRowBefore(this)" title="Insertar fila antes">▲+</button><button class="row-op-btn" onclick="insertRowAfter(this)" title="Insertar fila después">+▼</button><button class="row-op-btn del" onclick="deleteRow(this)" title="Eliminar fila">✕</button>`;
+          const fbBtn = (isCustomerRow || row.section!=='actores') ? '' : `<button class="row-op-btn" onclick="toggleFb(this)" title="Cambiar visible / backstage">👁</button>`;
+          ops.innerHTML=`${fbBtn}<button class="row-op-btn" onclick="insertRowBefore(this)" title="Insertar fila antes">▲+</button><button class="row-op-btn" onclick="insertRowAfter(this)" title="Insertar fila después">+▼</button><button class="row-op-btn del" onclick="deleteRow(this)" title="Eliminar fila">✕</button>`;
           td.appendChild(ops);
           const acText=document.createElement('span'); acText.className='actor-text'; acText.contentEditable=editMode?'true':'false'; acText.textContent=cell.actor;
           td.appendChild(acText);
-          if (row.fb) {
+          if (row.fb && !isCustomerRow) {
             const b=document.createElement('span'); b.className='fb-badge fb-'+row.fb;
             b.textContent = row.fb==='front' ? '● visible' : '○ backstage';
             b.title = row.fb==='front' ? 'Contacta directamente a la persona en algún tramo' : 'Nunca contacta directamente a la persona';
@@ -772,16 +810,18 @@ function restoreState(state) {
             const dataAttrs = t.by ? ` data-by="${t.by}" data-at="${t.at||''}"` : '';
             return `<span class="${map[t.type]||'tag-red'}" contenteditable="${editMode?'true':'false'}"${titleAttr}${dataAttrs}>${t.text}<span class="del-tag" onclick="removeTag(this)">✕</span></span>`;
           }).join('');
-          const isEmpty = !cell.main || cell.main===em;
+          const plainMain = stripToPlainText(cell.main);
+          const isEmpty = !plainMain || plainMain===em;
           const st = cell.state || '';
           if (st) td.classList.add('td-'+st);
-          td.innerHTML = `${stateBadgeHtml(st||null, cell.stateBy, cell.stateAt)}<div class="cell-wrap"><div class="cell-main ${isEmpty?'empty':''}" contenteditable="${editMode?'true':'false'}">${isEmpty?em:cell.main}</div>${tags}<div class="cell-add-btns">${dotsHtml()}</div></div>`;
+          td.innerHTML = `${stateBadgeHtml(st||null, cell.stateBy, cell.stateAt)}<div class="cell-wrap"><div class="cell-main ${isEmpty?'empty':''}" contenteditable="${editMode?'true':'false'}">${isEmpty?em:escapeHtml(plainMain)}</div>${tags}<div class="cell-add-btns">${dotsHtml()}</div></div>`;
         }
         dtr.appendChild(td);
       });
       tbody.appendChild(dtr);
     }
   });
+  resortActoresSection();
   window._hasUnsaved = false; updateUnsavedIndicator();
   updateProgressCounter();
   if (typeof clearSearchFilter === 'function') clearSearchFilter();
@@ -911,30 +951,31 @@ function confirmAddRow() {
   }
   const ref = last || document.querySelector(`#tbody tr.section-sep[data-section="${section}"]`);
   ref.after(buildDataRow(section, actor));
-  closeModals(); window._markUnsaved();
+  closeModals(); window._markUnsaved(); resortActoresSection();
 }
 function insertRowBefore(btn) {
   const tr = btn.closest('tr'); const section = tr.dataset.section;
   const actor = prompt('Nombre del actor / fila:'); if (actor===null) return;
   pushUndo();
   tr.parentNode.insertBefore(buildDataRow(section, actor || 'Nueva fila'), tr);
-  window._markUnsaved();
+  window._markUnsaved(); resortActoresSection();
 }
 function insertRowAfter(btn) {
   const tr = btn.closest('tr'); const section = tr.dataset.section;
   const actor = prompt('Nombre del actor / fila:'); if (actor===null) return;
   pushUndo();
   tr.after(buildDataRow(section, actor || 'Nueva fila'));
-  window._markUnsaved();
+  window._markUnsaved(); resortActoresSection();
 }
 function deleteRow(btn) {
   if (!confirm('¿Eliminar esta fila?')) return;
   pushUndo();
   btn.closest('tr').remove();
-  window._markUnsaved();
+  window._markUnsaved(); resortActoresSection();
 }
 function toggleFb(btn) {
   const tr = btn.closest('tr');
+  if (tr.dataset.isCustomer === 'true') return;
   const order = ['', 'front', 'back'];
   const cur = tr.dataset.fb || '';
   const next = order[(order.indexOf(cur)+1) % order.length];
@@ -950,6 +991,7 @@ function toggleFb(btn) {
     badge.title = next==='front' ? 'Contacta directamente a la persona en algún tramo' : 'Nunca contacta directamente a la persona';
   }
   window._markUnsaved();
+  resortActoresSection();
 }
 function addRowAfterSection(btn) {
   const sep = btn.closest('tr.section-sep'); const key = sep.dataset.section;
@@ -957,7 +999,7 @@ function addRowAfterSection(btn) {
   pushUndo();
   const rows = Array.from(document.querySelectorAll('#tbody tr')); let last=sep, started=false;
   for (const r of rows) { if (r===sep) { started=true; continue; } if (started) { if (r.classList.contains('section-sep')) break; last=r; } }
-  last.after(buildDataRow(key, actor)); window._markUnsaved();
+  last.after(buildDataRow(key, actor)); window._markUnsaved(); resortActoresSection();
 }
 function openAddSectionModal() {
   const pos = document.getElementById('new-section-pos'); pos.innerHTML='<option value="__end__">Al final</option>';
@@ -1027,6 +1069,14 @@ document.getElementById('tbody').addEventListener('focusout', e => {
   const el = e.target.closest('.cell-main');
   if (el && el.contentEditable === 'true' && el.textContent.trim() === '') { el.textContent = em; el.classList.add('empty'); }
 });
+function forcePlainPaste(e) {
+  if (!e.target.isContentEditable) return;
+  e.preventDefault();
+  const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+  document.execCommand('insertText', false, text);
+}
+document.getElementById('tbody').addEventListener('paste', forcePlainPaste);
+document.getElementById('thead-row').addEventListener('paste', forcePlainPaste);
 
 window._hasUnsaved = false;
 
