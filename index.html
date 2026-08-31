@@ -128,6 +128,7 @@
   .fb-badge { font-size:8px; margin-left:5px; padding:1px 5px; border-radius:8px; font-weight:600; white-space:nowrap; }
   .fb-badge.fb-front { background:var(--teal-l); color:var(--teal); }
   .fb-badge.fb-back  { background:var(--gray-l); color:var(--gray); }
+  .fb-badge.fb-system { background:var(--coral-l); color:var(--coral); }
 
   tr.line-divider td { border:none; padding:3px 10px; text-align:center; font-size:9px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--teal); background:var(--teal-l); border-top:1px dashed var(--teal); border-bottom:1px dashed var(--teal); }
 
@@ -547,7 +548,7 @@ const SEED_SECTIONS = [
  {key:'actores', cls:'sec-actores', label:'Trayectoria y actores', rows:[
   {actor:'Persona / cuidador', isCustomer:true, cells:['Recibe explicación de conducta, continuidad y próximos pasos','Conoce que será contrarreferida, destino y qué debería ocurrir','No debiera depender de transportar físicamente la CR','Espera activación del proceso por receptor','Puede ser contactada para complementar información','Recibe orientación sobre gestión','Recibe contacto, citación, instrucciones y requisitos para atención','Accede a control, tratamiento, examen u otra acción requerida','Conoce resultado, plan posterior y dónde continuar']},
   {actor:'Especialista HPM', fb:'front', cells:['Define conducta, necesidad de continuidad, tipo de CR y destino clínico','Registra CR: situación clínica, tratamiento, indicaciones, acción requerida, prioridad/plazo y prerrequisitos cuando corresponda','Asegura correcto registro para su envío/disponibilización',em,'Resuelve dudas clínicas o complementa información cuando corresponda','Participa excepcionalmente ante necesidad de redefinición clínica',em,em,'Finaliza responsabilidad clínica según criterios definidos']},
-  {actor:'Sistema HPM / EXPERTOS / RCE', fb:'back', cells:['Registra atención y decisión','Registra CR y datos obligatorios','Envía/disponibiliza CR al destino','Registra ingreso/puesta a disposición del receptor','Registra revisión, clasificación, decisión, responsable y plazo','Registra acciones/cambios de estado','Registra contacto/citación si existe integración','Vincula atención posterior si existe interoperabilidad','Registra estado final/cierre']},
+  {actor:'Sistema HPM / EXPERTOS / RCE', fb:'system', cells:['Registra atención y decisión','Registra CR y datos obligatorios','Disponibiliza CR al destino','Registra ingreso/disponibilidad para el receptor','Registra la revisión, clasificación y decisión tomadas por el responsable, con su plazo asociado','Registra acciones y cambios de estado','Registra contacto/citación si existe integración','Conecta la atención posterior si existe interoperabilidad','Registra y traza el estado final/cierre']},
   {actor:'CODE / función receptora APS *', fb:'back', cells:[em,em,em,'Recibe/dispone de CR en canal o bandeja definida','Revisa, clasifica, identifica requerimientos y prerrequisitos, determina acción, prioridad, responsable y plazo','Asigna/supervisa gestión según circuito','Monitorea avance cuando corresponda','Verifica cumplimiento según ruta','Confirma resultado/cierre del circuito']},
   {actor:'Profesional de enlace ECICEP *', fb:'back', cells:[em,em,em,'Puede identificar CR pertinentes a su ámbito','Apoya identificación de necesidades de articulación según criterios','Articula APS con mayor complejidad cuando corresponda','Facilita transición y resolución de barreras','Apoya continuidad de casos seleccionados','Retroalimenta resultado / activa escalamiento']},
   {actor:'Gestión de casos APS *', fb:'front', cells:[em,em,em,em,'Identifica casos que requieren gestión diferenciada','Realiza seguimiento activo de casos priorizados','Contacta, coordina y acompaña','Verifica continuidad efectiva','Cierra seguimiento o escala']},
@@ -669,7 +670,8 @@ function resortActoresSection() {
   }
   const customerRows = rows.filter(r => r.dataset.isCustomer === 'true');
   const frontRows = rows.filter(r => r.dataset.isCustomer !== 'true' && r.dataset.fb === 'front');
-  const backRows = rows.filter(r => r.dataset.isCustomer !== 'true' && r.dataset.fb !== 'front');
+  const systemRows = rows.filter(r => r.dataset.isCustomer !== 'true' && r.dataset.fb === 'system');
+  const backRows = rows.filter(r => r.dataset.isCustomer !== 'true' && r.dataset.fb !== 'front' && r.dataset.fb !== 'system');
   let anchor = sepRow;
   const put = (r) => { anchor.after(r); anchor = r; };
   customerRows.forEach(put);
@@ -677,6 +679,8 @@ function resortActoresSection() {
   frontRows.forEach(put);
   if (frontRows.length) put(buildDividerRow('actores', 'Línea de visibilidad — bajo esta línea, el actor no contacta directamente a la persona'));
   backRows.forEach(put);
+  if (systemRows.length) put(buildDividerRow('actores', 'Línea de soporte — sistemas de información y TIC (registran, disponibilizan, conectan y trazan; no deciden ni gestionan)'));
+  systemRows.forEach(put);
 }
 function buildSepRow(sectionKey, cls, label) {
   const sep = document.createElement('tr');
@@ -1149,10 +1153,22 @@ document.getElementById('tbody').addEventListener('dblclick', e => {
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('ficha-panel').classList.contains('open')) closeFicha(); });
 
+function fbBadgeLabel(state) {
+  if (state==='front') return '● visible';
+  if (state==='back') return '○ backstage';
+  if (state==='system') return '🖥 sistema/soporte';
+  return '';
+}
+function fbBadgeTitle(state) {
+  if (state==='front') return 'Contacta directamente a la persona en algún tramo';
+  if (state==='back') return 'Nunca contacta directamente a la persona — actor humano backstage';
+  if (state==='system') return 'No es un actor humano — es infraestructura/soporte técnico';
+  return '';
+}
 function toggleFb(btn) {
   const tr = btn.closest('tr');
   if (tr.dataset.isCustomer === 'true') return;
-  const order = ['', 'front', 'back'];
+  const order = ['', 'front', 'back', 'system'];
   const cur = tr.dataset.fb || '';
   const next = order[(order.indexOf(cur)+1) % order.length];
   tr.dataset.fb = next;
@@ -1163,8 +1179,8 @@ function toggleFb(btn) {
   } else {
     if (!badge) { badge = document.createElement('span'); td.appendChild(badge); }
     badge.className = 'fb-badge fb-'+next;
-    badge.textContent = next==='front' ? '● visible' : '○ backstage';
-    badge.title = next==='front' ? 'Contacta directamente a la persona en algún tramo' : 'Nunca contacta directamente a la persona';
+    badge.textContent = fbBadgeLabel(next);
+    badge.title = fbBadgeTitle(next);
   }
   window._markUnsaved();
   resortActoresSection();
