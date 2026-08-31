@@ -182,9 +182,29 @@
   .btn-ok:hover { background:#333; }
 
   footer { text-align:center; font-size:10px; color:var(--text-xs); padding:10px 16px 6px; }
+
+  #ficha-overlay { position:fixed; inset:0; background:rgba(20,20,18,.4); z-index:400; opacity:0; pointer-events:none; transition:opacity .2s; }
+  #ficha-overlay.open { opacity:1; pointer-events:auto; }
+  #ficha-panel { position:fixed; top:0; right:-420px; width:400px; max-width:92vw; height:100%; background:white; box-shadow:-8px 0 24px rgba(0,0,0,.18); z-index:410; padding:20px; overflow-y:auto; transition:right .22s ease; }
+  #ficha-panel.open { right:0; }
+  #ficha-panel .close { position:absolute; top:14px; right:14px; background:none; border:1px solid var(--border-h); width:26px; height:26px; border-radius:6px; cursor:pointer; color:var(--text-s); font-size:12px; }
+  #ficha-panel .close:hover { background:var(--gray-l); }
+  .ficha-tag { font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--azul); font-weight:600; margin:26px 0 4px; }
+  .ficha-context { font-size:14px; font-weight:600; color:var(--text); margin-bottom:14px; line-height:1.35; }
+  #ficha-panel label { display:block; font-size:10.5px; color:var(--text-s); margin:10px 0 3px; font-weight:600; }
+  #ficha-panel input, #ficha-panel textarea { width:100%; padding:6px 8px; border:1px solid var(--border-h); border-radius:5px; font-size:12px; font-family:inherit; color:var(--text); resize:vertical; }
+  #ficha-panel input:focus, #ficha-panel textarea:focus { outline:none; border-color:var(--azul); background:rgba(24,95,165,.03); }
+  #ficha-panel input:disabled, #ficha-panel textarea:disabled { background:#f5f4f0; color:var(--text-s); }
+  .ficha-row-2col { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .ficha-state { margin-top:16px; font-size:11px; font-weight:600; color:var(--text-s); border-top:1px solid var(--border); padding-top:10px; }
+  .ficha-meta { font-size:10px; color:var(--text-xs); margin-top:4px; }
+  .ficha-icon { position:absolute; bottom:2px; right:2px; background:var(--purple-l); color:var(--purple); border:none; border-radius:3px; font-size:10px; line-height:1.4; padding:1px 4px; cursor:pointer; z-index:12; }
+  .ficha-icon:hover { background:var(--purple); color:white; }
+  body.role-viewer .ficha-icon { cursor:pointer; }
+
   @media print {
     header,footer { position:static; }
-    .toolbar,.status-bar,.col-controls,.row-controls,.cell-add-btns { display:none !important; }
+    .toolbar,.status-bar,.col-controls,.row-controls,.cell-add-btns,#ficha-overlay,#ficha-panel,.ficha-icon,.progress-bar,.search-bar { display:none !important; }
     .container { padding:0; } body { background:white; }
     table { box-shadow:none; min-width:0; } td,th { padding:4px 5px; font-size:9px; }
     .tag-green,.tag-yellow,.tag-orange,.tag-red,.tag-blue { font-size:8px; }
@@ -277,15 +297,15 @@
   <thead id="thead-row">
     <tr>
       <th class="col-actor-head"></th>
-      <th class="col-stage" data-col="0"><span class="stage-title">1. Decisión clínica</span><span class="stage-sub">T0</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(0)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(0)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(0)">✕</button></div></th>
-      <th class="col-stage" data-col="1"><span class="stage-title">2. Emisión CR</span><span class="stage-sub">T1</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(1)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(1)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(1)">✕</button></div></th>
-      <th class="col-stage" data-col="2"><span class="stage-title">3. Envío</span><span class="stage-sub">T2</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(2)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(2)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(2)">✕</button></div></th>
-      <th class="col-stage" data-col="3"><span class="stage-title">4. Recepción</span><span class="stage-sub">T3</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(3)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(3)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(3)">✕</button></div></th>
-      <th class="col-stage" data-col="4"><span class="stage-title">5. Revisión y decisión</span><span class="stage-sub">T4</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(4)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(4)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(4)">✕</button></div></th>
-      <th class="col-stage" data-col="5"><span class="stage-title">6. Gestión</span><span class="stage-sub">T5</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(5)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(5)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(5)">✕</button></div></th>
-      <th class="col-stage" data-col="6"><span class="stage-title">7. Vinculación</span><span class="stage-sub">T6</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(6)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(6)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(6)">✕</button></div></th>
-      <th class="col-stage" data-col="7"><span class="stage-title">8. Atención / continuidad</span><span class="stage-sub">T7</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(7)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(7)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(7)">✕</button></div></th>
-      <th class="col-stage" data-col="8"><span class="stage-title">9. Cierre</span><span class="stage-sub">T8</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(8)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(8)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(8)">✕</button></div></th>
+      <th class="col-stage" data-col="0" data-col-id="T0"><span class="stage-title">1. Decisión clínica</span><span class="stage-sub">T0</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(0)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(0)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(0)">✕</button></div></th>
+      <th class="col-stage" data-col="1" data-col-id="T1"><span class="stage-title">2. Emisión CR</span><span class="stage-sub">T1</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(1)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(1)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(1)">✕</button></div></th>
+      <th class="col-stage" data-col="2" data-col-id="T2"><span class="stage-title">3. Envío</span><span class="stage-sub">T2</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(2)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(2)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(2)">✕</button></div></th>
+      <th class="col-stage" data-col="3" data-col-id="T3"><span class="stage-title">4. Recepción</span><span class="stage-sub">T3</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(3)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(3)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(3)">✕</button></div></th>
+      <th class="col-stage" data-col="4" data-col-id="T4"><span class="stage-title">5. Revisión y decisión</span><span class="stage-sub">T4</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(4)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(4)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(4)">✕</button></div></th>
+      <th class="col-stage" data-col="5" data-col-id="T5"><span class="stage-title">6. Gestión</span><span class="stage-sub">T5</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(5)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(5)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(5)">✕</button></div></th>
+      <th class="col-stage" data-col="6" data-col-id="T6"><span class="stage-title">7. Vinculación</span><span class="stage-sub">T6</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(6)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(6)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(6)">✕</button></div></th>
+      <th class="col-stage" data-col="7" data-col-id="T7"><span class="stage-title">8. Atención / continuidad</span><span class="stage-sub">T7</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(7)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(7)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(7)">✕</button></div></th>
+      <th class="col-stage" data-col="8" data-col-id="T8"><span class="stage-title">9. Cierre</span><span class="stage-sub">T8</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(8)">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(8)">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(8)">✕</button></div></th>
     </tr>
   </thead>
   <tbody id="tbody"></tbody>
@@ -470,6 +490,9 @@ loadLatestVersion().then(() => loadVersionList());
 
 <script>
 const em = '—';
+function genId(prefix) { return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+let fichaData = {};
+let currentFichaKey = null;
 const SEED_COLS = 9;
 const SEED_SECTIONS = [
  {key:'actores', cls:'sec-actores', label:'Trayectoria y actores', rows:[
@@ -548,9 +571,10 @@ function makeCellHtml(text, state) {
   const isEmpty = !text || text === em;
   return `${stateBadgeHtml(state||null)}<div class="cell-wrap"><div class="cell-main ${isEmpty?'empty':''}" contenteditable="${editMode?'true':'false'}">${isEmpty?em:text}</div><div class="cell-add-btns">${dotsHtml()}</div></div>`;
 }
-function buildDataRow(sectionKey, actor, cells, rowCls, fb, isCustomer) {
+function buildDataRow(sectionKey, actor, cells, rowCls, fb, isCustomer, rowId) {
   const tr = document.createElement('tr');
   tr.dataset.section = sectionKey;
+  tr.dataset.rowId = rowId || genId('r');
   tr.dataset.isCustomer = isCustomer ? 'true' : '';
   tr.dataset.fb = isCustomer ? '' : (fb || '');
   if (rowCls) tr.className = rowCls;
@@ -724,7 +748,7 @@ function updateProgressCounter() {
 function serializeState() {
   const cols = [];
   document.querySelectorAll('#thead-row th.col-stage').forEach(th => {
-    cols.push({ title: th.querySelector('.stage-title')?.textContent||'', sub: th.querySelector('.stage-sub')?.textContent||'' });
+    cols.push({ title: th.querySelector('.stage-title')?.textContent||'', sub: th.querySelector('.stage-sub')?.textContent||'', id: th.dataset.colId||'' });
   });
   const rows = [];
   document.querySelectorAll('#tbody tr').forEach(tr => {
@@ -753,10 +777,10 @@ function serializeState() {
         });
         cells.push({ main, tags, state, stateBy, stateAt });
       });
-      rows.push({ type:'data', section: tr.dataset.section, rowCls: tr.className, fb: tr.dataset.fb||'', isCustomer: tr.dataset.isCustomer==='true', cells });
+      rows.push({ type:'data', section: tr.dataset.section, rowCls: tr.className, fb: tr.dataset.fb||'', isCustomer: tr.dataset.isCustomer==='true', id: tr.dataset.rowId||'', cells });
     }
   });
-  return { cols, rows };
+  return { cols, rows, fichas: fichaData };
 }
 
 function stripToPlainText(html) {
@@ -769,10 +793,11 @@ function escapeHtml(s) {
 }
 function restoreState(state) {
   const { cols, rows } = state;
+  fichaData = state.fichas || {};
   const tr = document.querySelector('#thead-row tr');
   tr.querySelectorAll('th.col-stage').forEach(th => th.remove());
   cols.forEach((col,i) => {
-    const th = document.createElement('th'); th.className='col-stage'; th.dataset.col=i;
+    const th = document.createElement('th'); th.className='col-stage'; th.dataset.col=i; th.dataset.colId = col.id || genId('c');
     th.innerHTML = `<span class="stage-title">${col.title}</span><span class="stage-sub">${col.sub}</span><div class="col-controls"><button class="col-ctrl-btn" onclick="addColBefore(${i})">◀+</button><button class="col-ctrl-btn" onclick="addColAfter(${i})">+▶</button><button class="col-ctrl-btn" onclick="deleteCol(${i})">✕</button></div>`;
     tr.appendChild(th);
   });
@@ -785,7 +810,7 @@ function restoreState(state) {
     } else {
       const actorLabel = (row.cells[0]?.actor || '').trim().toLowerCase();
       const isCustomerRow = row.isCustomer || actorLabel === 'persona / cuidador';
-      const dtr = document.createElement('tr'); dtr.dataset.section = row.section; dtr.dataset.isCustomer = isCustomerRow ? 'true' : ''; dtr.dataset.fb = isCustomerRow ? '' : (row.fb||''); if (row.rowCls) dtr.className = row.rowCls;
+      const dtr = document.createElement('tr'); dtr.dataset.section = row.section; dtr.dataset.isCustomer = isCustomerRow ? 'true' : ''; dtr.dataset.fb = isCustomerRow ? '' : (row.fb||''); dtr.dataset.rowId = row.id || genId('r'); if (row.rowCls) dtr.className = row.rowCls;
       row.cells.forEach((cell,i) => {
         const td = document.createElement('td');
         if (i===0) {
@@ -822,6 +847,7 @@ function restoreState(state) {
     }
   });
   resortActoresSection();
+  renderAllFichaIcons();
   window._hasUnsaved = false; updateUnsavedIndicator();
   updateProgressCounter();
   if (typeof clearSearchFilter === 'function') clearSearchFilter();
@@ -906,7 +932,7 @@ function confirmAddCol() {
   const title = document.getElementById('new-col-title').value.trim(); if (!title) return;
   pushUndo();
   const sub = document.getElementById('new-col-sub').value.trim();
-  const newTh = document.createElement('th'); newTh.className='col-stage';
+  const newTh = document.createElement('th'); newTh.className='col-stage'; newTh.dataset.colId = genId('c');
   newTh.innerHTML = `<span class="stage-title">${title}</span>${sub?`<span class="stage-sub">${sub}</span>`:''}<div class="col-controls"><button class="col-ctrl-btn">◀+</button><button class="col-ctrl-btn">+▶</button><button class="col-ctrl-btn">✕</button></div>`;
   const hr = document.querySelector('#thead-row tr'); const ths = hr.querySelectorAll('th.col-stage');
   if (pendingColAction.type==='append') hr.appendChild(newTh);
@@ -973,6 +999,107 @@ function deleteRow(btn) {
   btn.closest('tr').remove();
   window._markUnsaved(); resortActoresSection();
 }
+function fichaHasContent(f) {
+  if (!f) return false;
+  return ['actividad','funcion','etapa','actor','unidad','lugar','sistema','frecuencia','plazo','criterio','observaciones','brechas','tobe','evidencias'].some(k => f[k] && f[k].trim());
+}
+function findSectionLabelForRow(tr) {
+  let el = tr.previousElementSibling;
+  while (el) { if (el.classList.contains('section-sep')) return el.querySelector('.sec-label')?.textContent?.trim() || ''; el = el.previousElementSibling; }
+  return '';
+}
+function openFichaPanel(td) {
+  const tr = td.closest('tr');
+  const rowId = tr.dataset.rowId;
+  const idx = Array.from(tr.children).indexOf(td);
+  const ths = document.querySelectorAll('#thead-row th.col-stage');
+  const th = ths[idx-1];
+  const colId = th?.dataset.colId;
+  if (!rowId || !colId) return;
+  currentFichaKey = rowId + ':' + colId;
+  const f = fichaData[currentFichaKey] || {};
+  document.getElementById('f-actividad').value = f.actividad ?? (td.querySelector('.cell-main')?.textContent || '').trim();
+  document.getElementById('f-funcion').value = f.funcion || '';
+  document.getElementById('f-etapa').value = f.etapa || ((th?.querySelector('.stage-title')?.textContent||'') + ' ' + (th?.querySelector('.stage-sub')?.textContent||'')).trim();
+  document.getElementById('f-actor').value = f.actor || '';
+  document.getElementById('f-unidad').value = f.unidad || '';
+  document.getElementById('f-lugar').value = f.lugar || '';
+  document.getElementById('f-sistema').value = f.sistema || '';
+  document.getElementById('f-frecuencia').value = f.frecuencia || '';
+  document.getElementById('f-plazo').value = f.plazo || '';
+  document.getElementById('f-criterio').value = f.criterio || '';
+  document.getElementById('f-observaciones').value = f.observaciones || '';
+  document.getElementById('f-brechas').value = f.brechas || '';
+  document.getElementById('f-tobe').value = f.tobe || '';
+  document.getElementById('f-evidencias').value = f.evidencias || '';
+
+  const actorLabel = (tr.querySelector('.actor-text')?.textContent || '').trim();
+  const etapaLabel = ((th?.querySelector('.stage-title')?.textContent||'') + ' · ' + (th?.querySelector('.stage-sub')?.textContent||'')).trim();
+  document.getElementById('ficha-tag').textContent = findSectionLabelForRow(tr) || 'Ficha operacional';
+  document.getElementById('ficha-context').textContent = `${actorLabel} — ${etapaLabel}`;
+
+  const state = td.querySelector('.state-badge')?.dataset.state || '';
+  document.getElementById('ficha-state').textContent = '¿Existe hoy? ' + (state ? STATE_LABELS_ES[state] : 'sin marcar') + ' — se cambia con el badge de la celda, no aquí.';
+  document.getElementById('ficha-meta').textContent = f._by ? `Última edición de la ficha: ${f._by}, ${f._at}` : 'Sin ediciones todavía.';
+
+  const disabled = userRole !== 'editor';
+  document.querySelectorAll('#ficha-panel input, #ficha-panel textarea').forEach(el => el.disabled = disabled);
+
+  document.getElementById('ficha-overlay').classList.add('open');
+  document.getElementById('ficha-panel').classList.add('open');
+}
+function closeFicha() {
+  document.getElementById('ficha-overlay').classList.remove('open');
+  document.getElementById('ficha-panel').classList.remove('open');
+  currentFichaKey = null;
+}
+function saveFichaField() {
+  if (!currentFichaKey || userRole !== 'editor') return;
+  const f = fichaData[currentFichaKey] || {};
+  f.actividad = document.getElementById('f-actividad').value;
+  f.funcion = document.getElementById('f-funcion').value;
+  f.etapa = document.getElementById('f-etapa').value;
+  f.actor = document.getElementById('f-actor').value;
+  f.unidad = document.getElementById('f-unidad').value;
+  f.lugar = document.getElementById('f-lugar').value;
+  f.sistema = document.getElementById('f-sistema').value;
+  f.frecuencia = document.getElementById('f-frecuencia').value;
+  f.plazo = document.getElementById('f-plazo').value;
+  f.criterio = document.getElementById('f-criterio').value;
+  f.observaciones = document.getElementById('f-observaciones').value;
+  f.brechas = document.getElementById('f-brechas').value;
+  f.tobe = document.getElementById('f-tobe').value;
+  f.evidencias = document.getElementById('f-evidencias').value;
+  f._by = typeof currentEditorName === 'function' ? currentEditorName() : '';
+  f._at = new Date().toLocaleString('es-CL', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  if (fichaHasContent(f)) fichaData[currentFichaKey] = f; else delete fichaData[currentFichaKey];
+  window._markUnsaved();
+  updateFichaIcon(currentFichaKey);
+}
+function updateFichaIcon(key) {
+  const [rowId, colId] = key.split(':');
+  const tr = document.querySelector(`#tbody tr[data-row-id="${rowId}"]`);
+  if (!tr) return;
+  const ths = Array.from(document.querySelectorAll('#thead-row th.col-stage'));
+  const thIndex = ths.findIndex(th => th.dataset.colId === colId);
+  if (thIndex < 0) return;
+  const td = tr.children[thIndex+1];
+  if (!td) return;
+  let icon = td.querySelector('.ficha-icon');
+  const has = fichaHasContent(fichaData[key]);
+  if (has) {
+    if (!icon) { icon = document.createElement('button'); icon.className='ficha-icon'; icon.title='Ver ficha operacional'; icon.textContent='📋'; icon.onclick=(e)=>{e.stopPropagation();openFichaPanel(td);}; td.appendChild(icon); }
+  } else if (icon) icon.remove();
+}
+function renderAllFichaIcons() { Object.keys(fichaData).forEach(updateFichaIcon); }
+document.getElementById('ficha-panel').addEventListener('input', saveFichaField);
+document.getElementById('tbody').addEventListener('dblclick', e => {
+  const td = e.target.closest('td');
+  if (!td || !td.querySelector('.cell-main')) return;
+  openFichaPanel(td);
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('ficha-panel').classList.contains('open')) closeFicha(); });
+
 function toggleFb(btn) {
   const tr = btn.closest('tr');
   if (tr.dataset.isCustomer === 'true') return;
@@ -1146,5 +1273,54 @@ function toggleCollapseAll() {
   document.getElementById('collapse-toggle-btn').textContent = anyExpanded ? 'Expandir todo' : 'Colapsar todo';
 }
 </script>
+<div id="ficha-overlay" onclick="closeFicha()"></div>
+<div id="ficha-panel">
+  <button class="close" onclick="closeFicha()" title="Cerrar">✕</button>
+  <p class="ficha-tag" id="ficha-tag">Ficha operacional</p>
+  <p class="ficha-context" id="ficha-context">—</p>
+
+  <label>Actividad</label>
+  <textarea id="f-actividad" rows="2" placeholder="Qué se hace en este cruce actor × etapa"></textarea>
+
+  <div class="ficha-row-2col">
+    <div><label>Función / capa</label><input id="f-funcion" placeholder="Ej: gestión de demanda"></div>
+    <div><label>Etapa / hito</label><input id="f-etapa" placeholder="Autocompletado"></div>
+  </div>
+
+  <label>Actor / rol ejecutor</label>
+  <input id="f-actor" placeholder="Ej: administrativa CODE, SOME, gestor de casos...">
+
+  <label>Unidad / equipo</label>
+  <input id="f-unidad" placeholder="Ej: UGT, CESFAM Alerce...">
+
+  <div class="ficha-row-2col">
+    <div><label>Lugar / canal</label><input id="f-lugar" placeholder="Ej: bandeja EXPERTOS, teléfono..."></div>
+    <div><label>Sistema / registro</label><input id="f-sistema" placeholder="Ej: EXPERTOS, RCE, Excel..."></div>
+  </div>
+
+  <div class="ficha-row-2col">
+    <div><label>Frecuencia</label><input id="f-frecuencia" placeholder="Ej: dos veces al día"></div>
+    <div><label>Plazo</label><input id="f-plazo" placeholder="Ej: 48 horas"></div>
+  </div>
+
+  <label>Criterio de cumplimiento / término</label>
+  <textarea id="f-criterio" rows="2" placeholder="¿Qué condición permite considerar esto cumplido?"></textarea>
+
+  <label>Observaciones</label>
+  <textarea id="f-observaciones" rows="2"></textarea>
+
+  <label>Brechas identificadas</label>
+  <textarea id="f-brechas" rows="2"></textarea>
+
+  <label>Propuesta TO-BE</label>
+  <textarea id="f-tobe" rows="2"></textarea>
+
+  <label>Evidencias / enlaces</label>
+  <textarea id="f-evidencias" rows="3" placeholder="Pega URLs o referencias documentales, una por línea"></textarea>
+
+  <p class="ficha-state" id="ficha-state">—</p>
+  <p class="ficha-meta" id="ficha-meta"></p>
+</div>
+
 </body>
 </html>
