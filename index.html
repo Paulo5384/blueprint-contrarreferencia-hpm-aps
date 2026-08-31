@@ -488,6 +488,55 @@ window._hasUnsaved = false;
 loadLatestVersion().then(() => loadVersionList());
 </script>
 
+<div id="ficha-overlay" onclick="closeFicha()"></div>
+<div id="ficha-panel">
+  <button class="close" onclick="closeFicha()" title="Cerrar">✕</button>
+  <p class="ficha-tag" id="ficha-tag">Ficha operacional</p>
+  <p class="ficha-context" id="ficha-context">—</p>
+
+  <label>Actividad</label>
+  <textarea id="f-actividad" rows="2" placeholder="Qué se hace en este cruce actor × etapa"></textarea>
+
+  <div class="ficha-row-2col">
+    <div><label>Función / capa</label><input id="f-funcion" placeholder="Ej: gestión de demanda"></div>
+    <div><label>Etapa / hito</label><input id="f-etapa" placeholder="Autocompletado"></div>
+  </div>
+
+  <label>Actor / rol ejecutor</label>
+  <input id="f-actor" placeholder="Ej: administrativa CODE, SOME, gestor de casos...">
+
+  <label>Unidad / equipo</label>
+  <input id="f-unidad" placeholder="Ej: UGT, CESFAM Alerce...">
+
+  <div class="ficha-row-2col">
+    <div><label>Lugar / canal</label><input id="f-lugar" placeholder="Ej: bandeja EXPERTOS, teléfono..."></div>
+    <div><label>Sistema / registro</label><input id="f-sistema" placeholder="Ej: EXPERTOS, RCE, Excel..."></div>
+  </div>
+
+  <div class="ficha-row-2col">
+    <div><label>Frecuencia</label><input id="f-frecuencia" placeholder="Ej: dos veces al día"></div>
+    <div><label>Plazo</label><input id="f-plazo" placeholder="Ej: 48 horas"></div>
+  </div>
+
+  <label>Criterio de cumplimiento / término</label>
+  <textarea id="f-criterio" rows="2" placeholder="¿Qué condición permite considerar esto cumplido?"></textarea>
+
+  <label>Observaciones</label>
+  <textarea id="f-observaciones" rows="2"></textarea>
+
+  <label>Brechas identificadas</label>
+  <textarea id="f-brechas" rows="2"></textarea>
+
+  <label>Propuesta TO-BE</label>
+  <textarea id="f-tobe" rows="2"></textarea>
+
+  <label>Evidencias / enlaces</label>
+  <textarea id="f-evidencias" rows="3" placeholder="Pega URLs o referencias documentales, una por línea"></textarea>
+
+  <p class="ficha-state" id="ficha-state">—</p>
+  <p class="ficha-meta" id="ficha-meta"></p>
+</div>
+
 <script>
 const em = '—';
 function genId(prefix) { return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -1273,54 +1322,6 @@ function toggleCollapseAll() {
   document.getElementById('collapse-toggle-btn').textContent = anyExpanded ? 'Expandir todo' : 'Colapsar todo';
 }
 </script>
-<div id="ficha-overlay" onclick="closeFicha()"></div>
-<div id="ficha-panel">
-  <button class="close" onclick="closeFicha()" title="Cerrar">✕</button>
-  <p class="ficha-tag" id="ficha-tag">Ficha operacional</p>
-  <p class="ficha-context" id="ficha-context">—</p>
-
-  <label>Actividad</label>
-  <textarea id="f-actividad" rows="2" placeholder="Qué se hace en este cruce actor × etapa"></textarea>
-
-  <div class="ficha-row-2col">
-    <div><label>Función / capa</label><input id="f-funcion" placeholder="Ej: gestión de demanda"></div>
-    <div><label>Etapa / hito</label><input id="f-etapa" placeholder="Autocompletado"></div>
-  </div>
-
-  <label>Actor / rol ejecutor</label>
-  <input id="f-actor" placeholder="Ej: administrativa CODE, SOME, gestor de casos...">
-
-  <label>Unidad / equipo</label>
-  <input id="f-unidad" placeholder="Ej: UGT, CESFAM Alerce...">
-
-  <div class="ficha-row-2col">
-    <div><label>Lugar / canal</label><input id="f-lugar" placeholder="Ej: bandeja EXPERTOS, teléfono..."></div>
-    <div><label>Sistema / registro</label><input id="f-sistema" placeholder="Ej: EXPERTOS, RCE, Excel..."></div>
-  </div>
-
-  <div class="ficha-row-2col">
-    <div><label>Frecuencia</label><input id="f-frecuencia" placeholder="Ej: dos veces al día"></div>
-    <div><label>Plazo</label><input id="f-plazo" placeholder="Ej: 48 horas"></div>
-  </div>
-
-  <label>Criterio de cumplimiento / término</label>
-  <textarea id="f-criterio" rows="2" placeholder="¿Qué condición permite considerar esto cumplido?"></textarea>
-
-  <label>Observaciones</label>
-  <textarea id="f-observaciones" rows="2"></textarea>
-
-  <label>Brechas identificadas</label>
-  <textarea id="f-brechas" rows="2"></textarea>
-
-  <label>Propuesta TO-BE</label>
-  <textarea id="f-tobe" rows="2"></textarea>
-
-  <label>Evidencias / enlaces</label>
-  <textarea id="f-evidencias" rows="3" placeholder="Pega URLs o referencias documentales, una por línea"></textarea>
-
-  <p class="ficha-state" id="ficha-state">—</p>
-  <p class="ficha-meta" id="ficha-meta"></p>
-</div>
 
 </body>
 </html>
