@@ -144,6 +144,19 @@
   .state-legend { display:flex; gap:10px; flex-wrap:wrap; font-size:10px; color:var(--text-s); padding:5px 16px; background:white; border-bottom:1px solid var(--border); }
   .state-legend b { font-weight:600; }
 
+  .progress-bar { display:flex; gap:12px; flex-wrap:wrap; align-items:center; font-size:11px; padding:6px 16px; background:#fafaf8; border-bottom:1px solid var(--border); }
+  .progress-bar .pb-track { flex:1 1 160px; min-width:120px; height:8px; border-radius:4px; overflow:hidden; display:flex; background:var(--gray-m); }
+  .progress-bar .pb-seg { height:100%; }
+  .progress-bar .pb-item { display:flex; align-items:center; gap:4px; white-space:nowrap; color:var(--text-s); }
+  .progress-bar .pb-dot { width:8px; height:8px; border-radius:2px; display:inline-block; }
+
+  .search-bar { display:flex; gap:8px; align-items:center; padding:6px 16px; background:white; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .search-bar input[type=text] { flex:1 1 220px; min-width:160px; padding:5px 9px; border:1px solid var(--border-h); border-radius:5px; font-size:12px; }
+  .search-bar select { padding:5px 8px; border:1px solid var(--border-h); border-radius:5px; font-size:11px; color:var(--text-s); }
+  .search-count { font-size:10px; color:var(--text-xs); white-space:nowrap; }
+  td.search-match .cell-main, td.search-match { outline:2px solid var(--azul); outline-offset:-2px; }
+  tr.search-dim td, tr.search-dim td.actor-cell { opacity:.28; }
+
   .sec-toggle { background:none; border:none; cursor:pointer; font-size:10px; margin-right:7px; color:inherit; padding:0 2px; vertical-align:middle; }
   tr.section-sep.collapsed td { opacity:.75; }
 
@@ -177,6 +190,7 @@
     .tag-green,.tag-yellow,.tag-orange,.tag-red,.tag-blue { font-size:8px; }
   }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -187,6 +201,7 @@
     <button class="btn-ok role-btn" onclick="enterAsViewer()">👁 Visualizador — solo lectura</button>
     <button class="btn-cancel role-btn" onclick="showEditorPasswordPrompt()">✏️ Editor</button>
     <div id="editor-pw-box" style="display:none;margin-top:10px;">
+      <input type="text" id="editor-name" placeholder="Tu nombre (para dejar registro de tus marcas)" style="margin-bottom:8px;">
       <input type="password" id="editor-pw" placeholder="Contraseña editor" onkeydown="if(event.key==='Enter')confirmEditorLogin()">
       <button class="btn-ok role-btn" onclick="confirmEditorLogin()">Entrar</button>
       <p id="pw-error" style="color:var(--red);font-size:11px;margin-top:2px;display:none;">Contraseña incorrecta</p>
@@ -221,6 +236,7 @@
   <div class="tb-sep"></div>
   <button class="tb-btn" id="collapse-toggle-btn" onclick="toggleCollapseAll()">Colapsar todo</button>
   <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="exportToExcel()">⬇ Exportar Excel</button>
   <button class="tb-btn" onclick="window.print()">Imprimir</button>
 </div>
 
@@ -235,11 +251,25 @@
 </div>
 
 <div class="state-legend">
-  <span><b>Estado AS-IS/TO-BE</b> (clic en el badge de cada celda para ciclar):</span>
+  <span><b>¿Existe hoy?</b> (clic en el badge de cada celda para marcar):</span>
   <span>🟩 sólido = existe</span>
   <span>🟥 sólido = no existe</span>
   <span>⬜ punteado = no sabemos</span>
-  <span>🟦 discontinuo = propuesta</span>
+  <span>🟦 discontinuo = es una propuesta</span>
+</div>
+<div class="progress-bar" id="progress-bar"></div>
+<div class="search-bar">
+  <input type="text" id="search-input" placeholder="Buscar texto en el mapa..." oninput="applySearchFilter()">
+  <select id="search-state-filter" onchange="applySearchFilter()">
+    <option value="">Todos los estados</option>
+    <option value="__unset__">Sin marcar</option>
+    <option value="existe">Existe</option>
+    <option value="noexiste">No existe</option>
+    <option value="nosabemos">No sabemos</option>
+    <option value="propuesta">Es una propuesta</option>
+  </select>
+  <span id="search-count" class="search-count"></span>
+  <button class="tb-btn" id="search-clear-btn" onclick="clearSearchFilter()" style="display:none">✕ Limpiar</button>
 </div>
 
 <div class="container">
@@ -482,10 +512,13 @@ function dotsHtml() {
   return `<button class="add-dot green" onclick="addTag(this,'green')" title="Fortaleza"></button><button class="add-dot yellow" onclick="addTag(this,'yellow')" title="Preventivo — riesgo de incumplimiento"></button><button class="add-dot orange" onclick="addTag(this,'orange')" title="Incumplimiento — plazo o regla vulnerada"></button><button class="add-dot red" onclick="addTag(this,'red')" title="Riesgo clínico/continuidad — crítico"></button><button class="add-dot blue" onclick="addTag(this,'blue')" title="Otro / referencia"></button>`;
 }
 const STATE_LABELS = { existe:'E', noexiste:'NE', nosabemos:'NS', propuesta:'P' };
-function stateBadgeHtml(state) {
+const STATE_LABELS_ES = { existe:'Existe', noexiste:'No existe', nosabemos:'No sabemos', propuesta:'Es una propuesta' };
+function stateBadgeHtml(state, by, at) {
   const cls = state ? 'state-'+state : '';
   const label = state ? STATE_LABELS[state] : '·';
-  return `<button class="state-badge ${cls}" data-state="${state||''}" onclick="cycleState(this)" title="Estado AS-IS/TO-BE — clic para cambiar">${label}</button>`;
+  const title = state && by ? `${STATE_LABELS_ES[state]} — marcado por ${by}, ${at||''}` : '¿Existe hoy? — clic para marcar';
+  const dataAttrs = by ? ` data-by="${by}" data-at="${at||''}"` : '';
+  return `<button class="state-badge ${cls}" data-state="${state||''}"${dataAttrs} onclick="cycleState(this)" title="${title}">${label}</button>`;
 }
 function cycleState(btn) {
   const order = [null,'existe','noexiste','nosabemos','propuesta'];
@@ -498,7 +531,17 @@ function cycleState(btn) {
   const td = btn.closest('td');
   td.classList.remove('td-existe','td-noexiste','td-nosabemos','td-propuesta');
   if (next) td.classList.add('td-'+next);
+  if (next && typeof currentEditorName === 'function') {
+    const who = currentEditorName();
+    const when = new Date().toLocaleString('es-CL', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    btn.dataset.by = who; btn.dataset.at = when;
+    btn.title = `${STATE_LABELS_ES[next]} — marcado por ${who}, ${when}`;
+  } else {
+    btn.dataset.by = ''; btn.dataset.at = '';
+    btn.title = '¿Existe hoy? — clic para marcar';
+  }
   window._markUnsaved();
+  updateProgressCounter();
 }
 function makeCellHtml(text, state) {
   const isEmpty = !text || text === em;
@@ -511,7 +554,7 @@ function buildDataRow(sectionKey, actor, cells, rowCls, fb) {
   if (rowCls) tr.className = rowCls;
   const ac = document.createElement('td'); ac.className = 'actor-cell';
   const ops = document.createElement('div'); ops.className = 'row-ops';
-  ops.innerHTML = `<button class="row-op-btn" onclick="insertRowBefore(this)" title="Insertar fila antes">▲+</button><button class="row-op-btn" onclick="insertRowAfter(this)" title="Insertar fila después">+▼</button><button class="row-op-btn del" onclick="deleteRow(this)" title="Eliminar fila">✕</button>`;
+  ops.innerHTML = `<button class="row-op-btn" onclick="toggleFb(this)" title="Cambiar visible / backstage">👁</button><button class="row-op-btn" onclick="insertRowBefore(this)" title="Insertar fila antes">▲+</button><button class="row-op-btn" onclick="insertRowAfter(this)" title="Insertar fila después">+▼</button><button class="row-op-btn del" onclick="deleteRow(this)" title="Eliminar fila">✕</button>`;
   ac.appendChild(ops);
   const acText = document.createElement('span'); acText.className='actor-text'; acText.contentEditable = editMode?'true':'false'; acText.textContent = actor;
   ac.appendChild(acText);
@@ -542,6 +585,82 @@ function buildSepRow(sectionKey, cls, label) {
   sep.innerHTML = `<td colspan="100" class="${cls}"><button class="sec-toggle" onclick="toggleSectionCollapse(this)">▾</button><span class="sec-label">${label}</span><div class="row-controls"><button class="row-ctrl-btn" onclick="addRowAfterSection(this)">+ fila</button><button class="row-ctrl-btn del" onclick="deleteSection(this)">✕</button></div></td>`;
   return sep;
 }
+function applySearchFilter() {
+  const term = document.getElementById('search-input').value.trim().toLowerCase();
+  const stateFilter = document.getElementById('search-state-filter').value;
+  const clearBtn = document.getElementById('search-clear-btn');
+  const countEl = document.getElementById('search-count');
+
+  document.querySelectorAll('#tbody td.search-match').forEach(td => td.classList.remove('search-match'));
+  document.querySelectorAll('#tbody tr.search-dim').forEach(tr => tr.classList.remove('search-dim'));
+
+  if (!term && !stateFilter) { countEl.textContent = ''; clearBtn.style.display = 'none'; return; }
+  clearBtn.style.display = 'inline-block';
+
+  let matchCount = 0;
+  document.querySelectorAll('#tbody tr').forEach(tr => {
+    if (tr.classList.contains('section-sep') || tr.classList.contains('line-divider')) return;
+    let rowMatch = false;
+    tr.querySelectorAll('td').forEach((td,i) => {
+      if (i===0) {
+        const actorText = (td.querySelector('.actor-text')?.textContent||'').toLowerCase();
+        if (term && actorText.includes(term)) rowMatch = true;
+        return;
+      }
+      const cellText = (td.querySelector('.cell-main')?.textContent||'').toLowerCase();
+      const cellState = td.querySelector('.state-badge')?.dataset.state || '';
+      const textOk = !term || cellText.includes(term);
+      const stateOk = !stateFilter || (stateFilter==='__unset__' ? !cellState : cellState===stateFilter);
+      if (textOk && stateOk) { td.classList.add('search-match'); rowMatch = true; matchCount++; }
+    });
+    if (!rowMatch) tr.classList.add('search-dim');
+    else {
+      const sepRow = document.querySelector(`#tbody tr.section-sep[data-section="${tr.dataset.section}"]`);
+      if (sepRow && sepRow.classList.contains('collapsed')) collapseSection(sepRow, false);
+    }
+  });
+  countEl.textContent = matchCount ? `${matchCount} coincidencia${matchCount===1?'':'s'}` : 'Sin coincidencias';
+}
+function clearSearchFilter() {
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-state-filter').value = '';
+  applySearchFilter();
+}
+
+function exportToExcel() {
+  if (typeof XLSX === 'undefined') { alert('La librería de exportación no cargó (revisa tu conexión a internet) — intenta de nuevo.'); return; }
+  const rows = [];
+  const headerRow = ['Capa', 'Actor / fila'];
+  document.querySelectorAll('#thead-row th.col-stage').forEach(th => {
+    const title = th.querySelector('.stage-title')?.textContent || '';
+    const sub = th.querySelector('.stage-sub')?.textContent || '';
+    headerRow.push(sub ? `${title} (${sub})` : title);
+  });
+  rows.push(headerRow);
+  let currentSection = '';
+  document.querySelectorAll('#tbody tr').forEach(tr => {
+    if (tr.classList.contains('section-sep')) { currentSection = tr.querySelector('.sec-label')?.textContent?.trim() || ''; return; }
+    if (tr.classList.contains('line-divider')) return;
+    const row = [currentSection];
+    tr.querySelectorAll('td').forEach((td,i) => {
+      if (i===0) { row.push((td.querySelector('.actor-text')?.textContent || td.textContent || '').trim()); return; }
+      const main = (td.querySelector('.cell-main')?.textContent || '').trim();
+      const state = td.querySelector('.state-badge')?.dataset.state || '';
+      const stateLabel = state ? ` [${STATE_LABELS_ES[state]}]` : '';
+      const tags = Array.from(td.querySelectorAll('.tag-green,.tag-yellow,.tag-orange,.tag-red,.tag-blue')).map(t => t.firstChild?.textContent?.trim()).filter(Boolean);
+      const tagsText = tags.length ? ' | ' + tags.join(' · ') : '';
+      row.push(main + stateLabel + tagsText);
+    });
+    rows.push(row);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:24},{wch:26}, ...Array(9).fill({wch:30})];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Blueprint CR');
+  const now = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `blueprint-contrarreferencia-hpm-aps_${now}.xlsx`);
+}
+
 function seedTable() {
   const tbody = document.getElementById('tbody');
   tbody.innerHTML = '';
@@ -552,11 +671,27 @@ function seedTable() {
       else tbody.appendChild(buildDataRow(sec.key, r.actor, r.cells, r.rowCls, r.fb));
     });
   });
+  updateProgressCounter();
+  if (typeof clearSearchFilter === 'function') clearSearchFilter();
 }
 
-function setStatus(type, msg) {
-  const dots = { ok:'dot-ok', warn:'dot-warn', err:'dot-err', pulse:'dot-pulse' };
-  document.getElementById('fb-status').innerHTML = `<span class="status-dot ${dots[type]}"></span>${msg}`;
+function updateProgressCounter() {
+  const bar = document.getElementById('progress-bar');
+  if (!bar) return;
+  const badges = document.querySelectorAll('#tbody .state-badge');
+  const counts = { '':0, existe:0, noexiste:0, nosabemos:0, propuesta:0 };
+  badges.forEach(b => { const s = b.dataset.state || ''; counts[s] = (counts[s]||0) + 1; });
+  const total = badges.length || 1;
+  const segs = [
+    { key:'existe', color:'var(--green)', label:'Existe' },
+    { key:'noexiste', color:'var(--red)', label:'No existe' },
+    { key:'nosabemos', color:'var(--amber-m)', label:'No sabemos' },
+    { key:'propuesta', color:'var(--azul)', label:'Propuesta' },
+    { key:'', color:'var(--gray-m)', label:'Sin marcar' },
+  ];
+  const track = segs.map(s => `<div class="pb-seg" style="width:${(counts[s.key]/total*100).toFixed(1)}%;background:${s.color}"></div>`).join('');
+  const items = segs.map(s => `<span class="pb-item"><span class="pb-dot" style="background:${s.color}"></span>${s.label}: ${counts[s.key]}</span>`).join('');
+  bar.innerHTML = `<div class="pb-track">${track}</div>${items}<span class="pb-item" style="margin-left:auto;font-weight:600">${total-counts['']} / ${total} marcadas</span>`;
 }
 
 function serializeState() {
@@ -576,7 +711,10 @@ function serializeState() {
       tr.querySelectorAll('td').forEach((td,i) => {
         if (i===0) { cells.push({ actor: (td.querySelector('.actor-text')?.textContent || td.textContent).trim() }); return; }
         const main = td.querySelector('.cell-main')?.innerHTML || '';
-        const state = td.dataset.state || td.querySelector('.state-badge')?.dataset.state || '';
+        const stateBadge = td.querySelector('.state-badge');
+        const state = td.dataset.state || stateBadge?.dataset.state || '';
+        const stateBy = stateBadge?.dataset.by || '';
+        const stateAt = stateBadge?.dataset.at || '';
         const tags = [];
         td.querySelectorAll('.tag-green,.tag-yellow,.tag-orange,.tag-red,.tag-blue').forEach(tag => {
           let type='red';
@@ -584,9 +722,9 @@ function serializeState() {
           else if (tag.classList.contains('tag-yellow')) type='yellow';
           else if (tag.classList.contains('tag-orange')) type='orange';
           else if (tag.classList.contains('tag-blue')) type='blue';
-          tags.push({ type, text: tag.firstChild?.textContent?.trim()||'' });
+          tags.push({ type, text: tag.firstChild?.textContent?.trim()||'', by: tag.dataset.by||'', at: tag.dataset.at||'' });
         });
-        cells.push({ main, tags, state });
+        cells.push({ main, tags, state, stateBy, stateAt });
       });
       rows.push({ type:'data', section: tr.dataset.section, rowCls: tr.className, fb: tr.dataset.fb||'', cells });
     }
@@ -616,7 +754,7 @@ function restoreState(state) {
         if (i===0) {
           td.className='actor-cell';
           const ops=document.createElement('div'); ops.className='row-ops';
-          ops.innerHTML=`<button class="row-op-btn" onclick="insertRowBefore(this)" title="Insertar fila antes">▲+</button><button class="row-op-btn" onclick="insertRowAfter(this)" title="Insertar fila después">+▼</button><button class="row-op-btn del" onclick="deleteRow(this)" title="Eliminar fila">✕</button>`;
+          ops.innerHTML=`<button class="row-op-btn" onclick="toggleFb(this)" title="Cambiar visible / backstage">👁</button><button class="row-op-btn" onclick="insertRowBefore(this)" title="Insertar fila antes">▲+</button><button class="row-op-btn" onclick="insertRowAfter(this)" title="Insertar fila después">+▼</button><button class="row-op-btn del" onclick="deleteRow(this)" title="Eliminar fila">✕</button>`;
           td.appendChild(ops);
           const acText=document.createElement('span'); acText.className='actor-text'; acText.contentEditable=editMode?'true':'false'; acText.textContent=cell.actor;
           td.appendChild(acText);
@@ -629,11 +767,15 @@ function restoreState(state) {
         }
         else {
           const map = {green:'tag-green',yellow:'tag-yellow',orange:'tag-orange',red:'tag-red',blue:'tag-blue'};
-          const tags = (cell.tags||[]).map(t=>`<span class="${map[t.type]||'tag-red'}" contenteditable="${editMode?'true':'false'}">${t.text}<span class="del-tag" onclick="removeTag(this)">✕</span></span>`).join('');
+          const tags = (cell.tags||[]).map(t=>{
+            const titleAttr = t.by ? ` title="Agregado por ${t.by}, ${t.at||''}"` : '';
+            const dataAttrs = t.by ? ` data-by="${t.by}" data-at="${t.at||''}"` : '';
+            return `<span class="${map[t.type]||'tag-red'}" contenteditable="${editMode?'true':'false'}"${titleAttr}${dataAttrs}>${t.text}<span class="del-tag" onclick="removeTag(this)">✕</span></span>`;
+          }).join('');
           const isEmpty = !cell.main || cell.main===em;
           const st = cell.state || '';
           if (st) td.classList.add('td-'+st);
-          td.innerHTML = `${stateBadgeHtml(st||null)}<div class="cell-wrap"><div class="cell-main ${isEmpty?'empty':''}" contenteditable="${editMode?'true':'false'}">${isEmpty?em:cell.main}</div>${tags}<div class="cell-add-btns">${dotsHtml()}</div></div>`;
+          td.innerHTML = `${stateBadgeHtml(st||null, cell.stateBy, cell.stateAt)}<div class="cell-wrap"><div class="cell-main ${isEmpty?'empty':''}" contenteditable="${editMode?'true':'false'}">${isEmpty?em:cell.main}</div>${tags}<div class="cell-add-btns">${dotsHtml()}</div></div>`;
         }
         dtr.appendChild(td);
       });
@@ -641,6 +783,8 @@ function restoreState(state) {
     }
   });
   window._hasUnsaved = false; updateUnsavedIndicator();
+  updateProgressCounter();
+  if (typeof clearSearchFilter === 'function') clearSearchFilter();
 }
 
 const AUTOSAVE_INTERVAL = 3*60;
@@ -789,6 +933,24 @@ function deleteRow(btn) {
   btn.closest('tr').remove();
   window._markUnsaved();
 }
+function toggleFb(btn) {
+  const tr = btn.closest('tr');
+  const order = ['', 'front', 'back'];
+  const cur = tr.dataset.fb || '';
+  const next = order[(order.indexOf(cur)+1) % order.length];
+  tr.dataset.fb = next;
+  const td = tr.querySelector('td.actor-cell');
+  let badge = td.querySelector('.fb-badge');
+  if (!next) {
+    if (badge) badge.remove();
+  } else {
+    if (!badge) { badge = document.createElement('span'); td.appendChild(badge); }
+    badge.className = 'fb-badge fb-'+next;
+    badge.textContent = next==='front' ? '● visible' : '○ backstage';
+    badge.title = next==='front' ? 'Contacta directamente a la persona en algún tramo' : 'Nunca contacta directamente a la persona';
+  }
+  window._markUnsaved();
+}
 function addRowAfterSection(btn) {
   const sep = btn.closest('tr.section-sep'); const key = sep.dataset.section;
   const actor = prompt('Nombre del actor / fila:'); if (!actor) return;
@@ -832,6 +994,9 @@ function addTag(btn, type) {
   const tag = document.createElement('span');
   const map = {green:'tag-green',yellow:'tag-yellow',orange:'tag-orange',red:'tag-red',blue:'tag-blue'};
   tag.className = map[type]; tag.contentEditable = editMode?'true':'false';
+  const who = typeof currentEditorName === 'function' ? currentEditorName() : '';
+  const when = new Date().toLocaleString('es-CL', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  if (who) { tag.dataset.by = who; tag.dataset.at = when; tag.title = `Agregado por ${who}, ${when}`; }
   tag.innerHTML = 'Texto<span class="del-tag" onclick="removeTag(this)">✕</span>';
   wrap.insertBefore(tag, addBtns); window._markUnsaved();
   const r = document.createRange(); r.setStart(tag.firstChild,0); r.setEnd(tag.firstChild,tag.firstChild.length);
@@ -846,7 +1011,22 @@ document.addEventListener('click', e => {
   if (dd && dd.classList.contains('open') && !dd.contains(e.target) && e.target !== wrap) dd.classList.remove('open');
 });
 document.addEventListener('keydown', e => { if (e.key==='Escape') closeModals(); });
-document.addEventListener('input', e => { if (e.target.closest('#tbody') || e.target.closest('#thead-row')) window._markUnsaved(); });
+document.addEventListener('input', e => {
+  if (e.target.closest('#tbody') || e.target.closest('#thead-row')) window._markUnsaved();
+  const cellMain = e.target.closest('.cell-main');
+  if (cellMain) {
+    const txt = cellMain.textContent.trim();
+    if (!txt || txt === em) cellMain.classList.add('empty'); else cellMain.classList.remove('empty');
+  }
+});
+document.getElementById('tbody').addEventListener('focusin', e => {
+  const el = e.target.closest('.cell-main');
+  if (el && el.contentEditable === 'true' && el.textContent.trim() === em) { el.textContent = ''; el.classList.remove('empty'); }
+});
+document.getElementById('tbody').addEventListener('focusout', e => {
+  const el = e.target.closest('.cell-main');
+  if (el && el.contentEditable === 'true' && el.textContent.trim() === '') { el.textContent = em; el.classList.add('empty'); }
+});
 
 window._hasUnsaved = false;
 
@@ -861,9 +1041,14 @@ function showEditorPasswordPrompt() {
 }
 function confirmEditorLogin() {
   const pw = document.getElementById('editor-pw').value;
-  if (pw === EDITOR_PASSWORD) { userRole = 'editor'; finishLogin(); }
-  else { document.getElementById('pw-error').style.display = 'block'; }
+  const name = document.getElementById('editor-name').value.trim();
+  if (pw === EDITOR_PASSWORD) {
+    userRole = 'editor';
+    if (name) localStorage.setItem('cr_editor_name', name);
+    finishLogin();
+  } else { document.getElementById('pw-error').style.display = 'block'; }
 }
+function currentEditorName() { return localStorage.getItem('cr_editor_name') || 'Editor sin nombre'; }
 function finishLogin() {
   sessionStorage.setItem('cr_role', userRole);
   document.getElementById('login-gate').style.display = 'none';
@@ -872,7 +1057,7 @@ function finishLogin() {
 function applyRoleUI() {
   const isEditor = userRole === 'editor';
   document.body.classList.toggle('role-viewer', !isEditor);
-  document.getElementById('role-badge').textContent = isEditor ? '✏️ Editor' : '👁 Visualizador';
+  document.getElementById('role-badge').textContent = isEditor ? `✏️ Editor · ${currentEditorName()}` : '👁 Visualizador';
   if (!isEditor && editMode) toggleEdit();
 }
 function changeRole() {
@@ -880,10 +1065,15 @@ function changeRole() {
   sessionStorage.removeItem('cr_role'); userRole = null;
   document.getElementById('editor-pw-box').style.display = 'none';
   document.getElementById('editor-pw').value = '';
+  const nameInput = document.getElementById('editor-name');
+  if (nameInput) nameInput.value = localStorage.getItem('cr_editor_name') || '';
   document.getElementById('pw-error').style.display = 'none';
   document.getElementById('login-gate').style.display = 'flex';
 }
 (function initRole() {
+  const savedName = localStorage.getItem('cr_editor_name');
+  const nameInput = document.getElementById('editor-name');
+  if (savedName && nameInput) nameInput.value = savedName;
   const saved = sessionStorage.getItem('cr_role');
   if (saved) { userRole = saved; document.getElementById('login-gate').style.display = 'none'; applyRoleUI(); }
 })();
