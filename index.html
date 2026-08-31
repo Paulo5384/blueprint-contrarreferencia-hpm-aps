@@ -51,10 +51,10 @@
   .ver-chip:hover { background:var(--azul-l); color:var(--azul); border-color:var(--azul-m); }
   .ver-chip.active { background:var(--azul-l); color:var(--azul); border-color:var(--azul); font-weight:600; }
 
-  .container { padding:14px 12px 40px; overflow-x:auto; }
-  table { border-collapse:collapse; min-width:1240px; width:100%; background:white; border-radius:8px; overflow:hidden; box-shadow:var(--shadow); }
-  thead tr th { padding:8px; border:1px solid var(--border); font-weight:600; font-size:11px; text-align:center; vertical-align:middle; line-height:1.3; position:relative; }
-  th.col-actor-head { background:#1a1a18; color:white; width:170px; }
+  .container { padding:14px 12px 40px; overflow:auto; max-height:calc(100vh - 260px); border-radius:8px; }
+  table { border-collapse:separate; border-spacing:0; min-width:1240px; width:100%; background:white; border-radius:8px; }
+  thead tr th { padding:8px; border:1px solid var(--border); font-weight:600; font-size:11px; text-align:center; vertical-align:middle; line-height:1.3; position:sticky; top:0; z-index:20; }
+  th.col-actor-head { background:#1a1a18; color:white; width:170px; position:sticky; top:0; left:0; z-index:30; }
   th.col-stage { background:#1a1a18; color:white; }
   th.col-stage .stage-title { font-size:11px; font-weight:500; display:block; outline:none; }
   th.col-stage .stage-sub { font-size:9px; font-weight:400; opacity:.6; display:block; margin-top:2px; outline:none; }
@@ -73,7 +73,7 @@
   .sec-control  { background:var(--coral-l);  color:var(--coral); }
 
   td { border:1px solid var(--border); padding:7px 8px; vertical-align:top; position:relative; }
-  td.actor-cell { font-weight:600; font-size:11px; color:var(--text-s); width:170px; background:#fafaf8; line-height:1.4; }
+  td.actor-cell { font-weight:600; font-size:11px; color:var(--text-s); width:170px; background:#fafaf8; line-height:1.4; position:sticky; left:0; z-index:15; }
   td.actor-cell[contenteditable="true"] { color:var(--text); }
   tr:not(.section-sep):hover td { background:#fdfcf9; }
   tr:not(.section-sep):hover .row-controls { opacity:1; }
@@ -488,7 +488,7 @@ function buildDataRow(sectionKey, actor, cells, rowCls, fb) {
   tr.dataset.section = sectionKey;
   tr.dataset.fb = fb || '';
   if (rowCls) tr.className = rowCls;
-  const ac = document.createElement('td'); ac.className = 'actor-cell'; ac.style.position='relative';
+  const ac = document.createElement('td'); ac.className = 'actor-cell';
   const ops = document.createElement('div'); ops.className = 'row-ops';
   ops.innerHTML = `<button class="row-op-btn" onclick="insertRowBefore(this)" title="Insertar fila antes">▲+</button><button class="row-op-btn" onclick="insertRowAfter(this)" title="Insertar fila después">+▼</button><button class="row-op-btn del" onclick="deleteRow(this)" title="Eliminar fila">✕</button>`;
   ac.appendChild(ops);
@@ -592,7 +592,7 @@ function restoreState(state) {
       row.cells.forEach((cell,i) => {
         const td = document.createElement('td');
         if (i===0) {
-          td.className='actor-cell'; td.style.position='relative';
+          td.className='actor-cell';
           const ops=document.createElement('div'); ops.className='row-ops';
           ops.innerHTML=`<button class="row-op-btn" onclick="insertRowBefore(this)" title="Insertar fila antes">▲+</button><button class="row-op-btn" onclick="insertRowAfter(this)" title="Insertar fila después">+▼</button><button class="row-op-btn del" onclick="deleteRow(this)" title="Eliminar fila">✕</button>`;
           td.appendChild(ops);
