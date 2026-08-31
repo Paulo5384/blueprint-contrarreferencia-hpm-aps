@@ -10,6 +10,7 @@
     --azul:#185FA5; --azul-l:#E6F1FB; --azul-m:#B5D4F4;
     --teal:#0F6E56; --teal-l:#E1F5EE;
     --amber:#854F0B; --amber-l:#FAEEDA; --amber-m:#FAC775;
+    --warn:#A15A1A; --warn-l:#FBEBDC; --warn-m:#F0B27A;
     --coral:#993C1D; --coral-l:#FAECE7;
     --purple:#534AB7; --purple-l:#EEEDFE;
     --gray:#444441; --gray-l:#F1EFE8; --gray-m:#D3D1C7;
@@ -31,6 +32,7 @@
   .leg-yellow { background:var(--amber-l);  border-color:var(--amber-m); }
   .leg-red    { background:var(--red-l);    border-color:var(--red); }
   .leg-blue   { background:var(--azul-l);   border-color:var(--azul); }
+  .leg-orange { background:var(--warn-l); border-color:var(--warn); }
 
   .toolbar { background:white; border-bottom:1px solid var(--border); padding:6px 16px; display:flex; gap:6px; flex-wrap:wrap; align-items:center; position:sticky; top:57px; z-index:190; }
   .tb-btn { display:inline-flex; align-items:center; gap:5px; font-size:11px; padding:5px 10px; border:1px solid var(--border-h); border-radius:5px; background:white; cursor:pointer; color:var(--text-s); transition:background .15s; white-space:nowrap; }
@@ -65,11 +67,11 @@
 
   tr.section-sep td { padding:4px 10px; font-size:9.5px; font-weight:600; letter-spacing:.07em; text-transform:uppercase; border:1px solid var(--border); border-top:2px solid var(--border-h); position:relative; }
   tr.section-sep td:hover .row-controls { opacity:1; }
-  .sec-actores  { background:var(--purple-l); color:var(--purple); }
+  .sec-actores  { background:var(--gray-l);   color:var(--gray); }
   .sec-primaria { background:var(--gray-l);   color:var(--gray); }
   .sec-rutas    { background:var(--teal-l);   color:var(--teal); }
   .sec-objeto   { background:var(--azul-l);   color:var(--azul); }
-  .sec-reglas   { background:var(--amber-l);  color:var(--amber); }
+  .sec-reglas   { background:var(--purple-l); color:var(--purple); }
   .sec-control  { background:var(--coral-l);  color:var(--coral); }
 
   td { border:1px solid var(--border); padding:7px 8px; vertical-align:top; position:relative; }
@@ -91,6 +93,7 @@
   .tag-yellow { display:block; margin-top:4px; font-size:10px; color:var(--amber); background:var(--amber-l); border-left:2.5px solid var(--amber-m); padding:2px 5px; border-radius:0 3px 3px 0; line-height:1.4; outline:none; }
   .tag-red    { display:block; margin-top:4px; font-size:10px; color:var(--red); background:var(--red-l); border-left:2.5px solid var(--red); padding:2px 5px; border-radius:0 3px 3px 0; line-height:1.4; outline:none; }
   .tag-blue   { display:block; margin-top:4px; font-size:10px; color:var(--azul); background:var(--azul-l); border-left:2.5px solid var(--azul); padding:2px 5px; border-radius:0 3px 3px 0; line-height:1.4; outline:none; }
+  .tag-orange { display:block; margin-top:4px; font-size:10px; color:var(--warn); background:var(--warn-l); border-left:2.5px solid var(--warn); padding:2px 5px; border-radius:0 3px 3px 0; line-height:1.4; outline:none; }
 
   .empty { color:var(--text-xs); font-size:11px; text-align:center; opacity:.35; }
 
@@ -101,6 +104,7 @@
   .add-dot.yellow { background:var(--amber-l);  border-color:var(--amber-m); } .add-dot.yellow:hover { background:var(--amber-m); }
   .add-dot.red    { background:var(--red-l);    border-color:var(--red); }    .add-dot.red:hover    { background:var(--red); }
   .add-dot.blue   { background:var(--azul-l);   border-color:var(--azul); }   .add-dot.blue:hover   { background:var(--azul); }
+  .add-dot.orange { background:var(--warn-l);   border-color:var(--warn); }   .add-dot.orange:hover { background:var(--warn); }
   .del-tag { font-size:9px; cursor:pointer; opacity:.4; margin-left:3px; }
   .del-tag:hover { opacity:1; }
 
@@ -166,7 +170,7 @@
     .toolbar,.status-bar,.col-controls,.row-controls,.cell-add-btns { display:none !important; }
     .container { padding:0; } body { background:white; }
     table { box-shadow:none; min-width:0; } td,th { padding:4px 5px; font-size:9px; }
-    .tag-green,.tag-yellow,.tag-red,.tag-blue { font-size:8px; }
+    .tag-green,.tag-yellow,.tag-orange,.tag-red,.tag-blue { font-size:8px; }
   }
 </style>
 </head>
@@ -193,8 +197,9 @@
   </div>
   <div class="legend">
     <div class="leg-item"><div class="leg-dot leg-green"></div> Fortaleza</div>
-    <div class="leg-item"><div class="leg-dot leg-yellow"></div> Precaución</div>
-    <div class="leg-item"><div class="leg-dot leg-red"></div> Red flag</div>
+    <div class="leg-item"><div class="leg-dot leg-yellow"></div> Preventivo — riesgo de incumplimiento</div>
+    <div class="leg-item"><div class="leg-dot leg-orange"></div> Incumplimiento — plazo o regla vulnerada</div>
+    <div class="leg-item"><div class="leg-dot leg-red"></div> Riesgo clínico/continuidad — crítico</div>
     <div class="leg-item"><div class="leg-dot leg-blue"></div> Otro / referencia</div>
     <span class="role-badge" id="role-badge">—</span>
     <button class="change-role-link" onclick="changeRole()">cambiar perfil</button>
@@ -278,11 +283,11 @@
     <label>Nombre de la capa</label><input type="text" id="new-section-label" placeholder="Ej: Farmacia y dispensación">
     <label>Color</label>
     <select id="new-section-color">
-      <option value="sec-actores">Morado — Actores</option>
+      <option value="sec-actores">Gris — Actores</option>
       <option value="sec-primaria">Gris — Responsabilidad primaria</option>
       <option value="sec-rutas">Teal — Rutas de gestión</option>
       <option value="sec-objeto">Azul — Objeto de gestión</option>
-      <option value="sec-reglas">Ámbar — Reglas del proceso</option>
+      <option value="sec-reglas">Morado — Reglas del proceso</option>
       <option value="sec-control">Coral — Datos / tiempos / alertas</option>
     </select>
     <label>Posición</label><select id="new-section-pos"></select>
@@ -458,7 +463,7 @@ const SEED_SECTIONS = [
 ];
 
 function dotsHtml() {
-  return `<button class="add-dot green" onclick="addTag(this,'green')"></button><button class="add-dot yellow" onclick="addTag(this,'yellow')"></button><button class="add-dot red" onclick="addTag(this,'red')"></button><button class="add-dot blue" onclick="addTag(this,'blue')"></button>`;
+  return `<button class="add-dot green" onclick="addTag(this,'green')" title="Fortaleza"></button><button class="add-dot yellow" onclick="addTag(this,'yellow')" title="Preventivo — riesgo de incumplimiento"></button><button class="add-dot orange" onclick="addTag(this,'orange')" title="Incumplimiento — plazo o regla vulnerada"></button><button class="add-dot red" onclick="addTag(this,'red')" title="Riesgo clínico/continuidad — crítico"></button><button class="add-dot blue" onclick="addTag(this,'blue')" title="Otro / referencia"></button>`;
 }
 const STATE_LABELS = { existe:'E', noexiste:'NE', nosabemos:'NS', propuesta:'P' };
 function stateBadgeHtml(state) {
@@ -557,10 +562,11 @@ function serializeState() {
         const main = td.querySelector('.cell-main')?.innerHTML || '';
         const state = td.dataset.state || td.querySelector('.state-badge')?.dataset.state || '';
         const tags = [];
-        td.querySelectorAll('.tag-green,.tag-yellow,.tag-red,.tag-blue').forEach(tag => {
+        td.querySelectorAll('.tag-green,.tag-yellow,.tag-orange,.tag-red,.tag-blue').forEach(tag => {
           let type='red';
           if (tag.classList.contains('tag-green')) type='green';
           else if (tag.classList.contains('tag-yellow')) type='yellow';
+          else if (tag.classList.contains('tag-orange')) type='orange';
           else if (tag.classList.contains('tag-blue')) type='blue';
           tags.push({ type, text: tag.firstChild?.textContent?.trim()||'' });
         });
@@ -606,7 +612,7 @@ function restoreState(state) {
           }
         }
         else {
-          const map = {green:'tag-green',yellow:'tag-yellow',red:'tag-red',blue:'tag-blue'};
+          const map = {green:'tag-green',yellow:'tag-yellow',orange:'tag-orange',red:'tag-red',blue:'tag-blue'};
           const tags = (cell.tags||[]).map(t=>`<span class="${map[t.type]||'tag-red'}" contenteditable="${editMode?'true':'false'}">${t.text}<span class="del-tag" onclick="removeTag(this)">✕</span></span>`).join('');
           const isEmpty = !cell.main || cell.main===em;
           const st = cell.state || '';
@@ -665,7 +671,7 @@ function toggleEdit() {
   editMode = !editMode;
   document.getElementById('edit-label').textContent = editMode ? 'Desactivar edición' : 'Editar';
   const ce = editMode ? 'true' : 'false';
-  document.querySelectorAll('.cell-main,.tag-green,.tag-yellow,.tag-red,.tag-blue,.actor-text,.stage-title,.stage-sub').forEach(el => el.contentEditable = ce);
+  document.querySelectorAll('.cell-main,.tag-green,.tag-yellow,.tag-orange,.tag-red,.tag-blue,.actor-text,.stage-title,.stage-sub').forEach(el => el.contentEditable = ce);
   document.querySelectorAll('tr.section-sep .sec-label').forEach(s => { s.contentEditable = ce; });
 }
 function openSaveModal() {
@@ -808,14 +814,14 @@ function deleteSection(btn) {
 function addTag(btn, type) {
   const wrap = btn.closest('.cell-wrap'); const addBtns = btn.closest('.cell-add-btns');
   const tag = document.createElement('span');
-  const map = {green:'tag-green',yellow:'tag-yellow',red:'tag-red',blue:'tag-blue'};
+  const map = {green:'tag-green',yellow:'tag-yellow',orange:'tag-orange',red:'tag-red',blue:'tag-blue'};
   tag.className = map[type]; tag.contentEditable = editMode?'true':'false';
   tag.innerHTML = 'Texto<span class="del-tag" onclick="removeTag(this)">✕</span>';
   wrap.insertBefore(tag, addBtns); window._markUnsaved();
   const r = document.createRange(); r.setStart(tag.firstChild,0); r.setEnd(tag.firstChild,tag.firstChild.length);
   const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); tag.focus();
 }
-function removeTag(btn) { btn.closest('.tag-green,.tag-yellow,.tag-red,.tag-blue').remove(); window._markUnsaved(); }
+function removeTag(btn) { btn.closest('.tag-green,.tag-yellow,.tag-orange,.tag-red,.tag-blue').remove(); window._markUnsaved(); }
 function closeModals() { document.querySelectorAll('.modal-overlay').forEach(m=>m.style.display='none'); }
 document.addEventListener('keydown', e => { if (e.key==='Escape') closeModals(); });
 document.addEventListener('input', e => { if (e.target.closest('#tbody') || e.target.closest('#thead-row')) window._markUnsaved(); });
