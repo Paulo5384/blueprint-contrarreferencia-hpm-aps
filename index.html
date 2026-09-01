@@ -216,6 +216,9 @@
   .gc-nosabemos { background:var(--amber-l); color:var(--amber); }
   .gc-brecha { background:var(--coral-l); color:var(--coral); }
   .gc-tobe { background:var(--azul-l); color:var(--azul); }
+  .gc-tagyellow { background:var(--amber-l); color:var(--amber); }
+  .gc-tagorange { background:var(--warn-l); color:var(--warn); }
+  .gc-tagred { background:var(--red-l); color:var(--red); }
   .gaps-section { font-size:10px; text-transform:uppercase; letter-spacing:.06em; font-weight:700; color:var(--text-s); margin:16px 0 4px; border-bottom:1px solid var(--border); padding-bottom:3px; }
   .gaps-actor { font-size:11.5px; font-weight:600; color:var(--text); margin:8px 0 4px; }
   .gaps-item { border:1px solid var(--border); border-radius:6px; padding:8px 10px; margin-bottom:8px; }
@@ -224,6 +227,9 @@
   .gi-nosabemos .gaps-tag { color:var(--amber); }
   .gi-brecha .gaps-tag { color:var(--coral); }
   .gi-tobe .gaps-tag { color:var(--azul); }
+  .gi-tagyellow .gaps-tag { color:var(--amber); }
+  .gi-tagorange .gaps-tag { color:var(--warn); }
+  .gi-tagred .gaps-tag { color:var(--red); }
   .gaps-item p { font-size:12px; color:var(--text); margin:4px 0 6px; line-height:1.4; }
   .gaps-goto { font-size:10.5px; padding:3px 8px; border:1px solid var(--border-h); border-radius:5px; background:white; cursor:pointer; color:var(--azul); }
   .gaps-goto:hover { background:var(--azul-l); }
@@ -668,7 +674,7 @@ function buildDataRow(sectionKey, actor, cells, rowCls, fb, isCustomer, rowId) {
   const ac = document.createElement('td'); ac.className = 'actor-cell';
   const ops = document.createElement('div'); ops.className = 'row-ops';
   const fbBtn = (isCustomer || sectionKey!=='actores') ? '' : `<button class="row-op-btn" onclick="toggleFb(this)" title="Cambiar visible / backstage">👁</button>`;
-  ops.innerHTML = `${fbBtn}<button class="row-op-btn" onclick="insertRowBefore(this)" title="Insertar fila antes">▲+</button><button class="row-op-btn" onclick="insertRowAfter(this)" title="Insertar fila después">+▼</button><button class="row-op-btn del" onclick="deleteRow(this)" title="Eliminar fila">✕</button>`;
+  ops.innerHTML = `${fbBtn}<button class="row-op-btn" onclick="moveRowUp(this)" title="Mover fila arriba">⬆</button><button class="row-op-btn" onclick="moveRowDown(this)" title="Mover fila abajo">⬇</button><button class="row-op-btn" onclick="insertRowBefore(this)" title="Insertar fila antes">▲+</button><button class="row-op-btn" onclick="insertRowAfter(this)" title="Insertar fila después">+▼</button><button class="row-op-btn del" onclick="deleteRow(this)" title="Eliminar fila">✕</button>`;
   ac.appendChild(ops);
   const acText = document.createElement('span'); acText.className='actor-text'; acText.contentEditable = editMode?'true':'false'; acText.textContent = actor;
   ac.appendChild(acText);
@@ -907,7 +913,7 @@ function restoreState(state) {
           td.className='actor-cell';
           const ops=document.createElement('div'); ops.className='row-ops';
           const fbBtn = (isCustomerRow || row.section!=='actores') ? '' : `<button class="row-op-btn" onclick="toggleFb(this)" title="Cambiar visible / backstage">👁</button>`;
-          ops.innerHTML=`${fbBtn}<button class="row-op-btn" onclick="insertRowBefore(this)" title="Insertar fila antes">▲+</button><button class="row-op-btn" onclick="insertRowAfter(this)" title="Insertar fila después">+▼</button><button class="row-op-btn del" onclick="deleteRow(this)" title="Eliminar fila">✕</button>`;
+          ops.innerHTML=`${fbBtn}<button class="row-op-btn" onclick="moveRowUp(this)" title="Mover fila arriba">⬆</button><button class="row-op-btn" onclick="moveRowDown(this)" title="Mover fila abajo">⬇</button><button class="row-op-btn" onclick="insertRowBefore(this)" title="Insertar fila antes">▲+</button><button class="row-op-btn" onclick="insertRowAfter(this)" title="Insertar fila después">+▼</button><button class="row-op-btn del" onclick="deleteRow(this)" title="Eliminar fila">✕</button>`;
           td.appendChild(ops);
           const acText=document.createElement('span'); acText.className='actor-text'; acText.contentEditable=editMode?'true':'false'; acText.textContent=cell.actor;
           td.appendChild(acText);
@@ -1069,6 +1075,24 @@ function confirmAddRow() {
   ref.after(buildDataRow(section, actor));
   closeModals(); window._markUnsaved(); resortActoresSection();
 }
+function moveRowUp(btn) {
+  const tr = btn.closest('tr');
+  const sib = tr.previousElementSibling;
+  if (!sib || sib.classList.contains('section-sep') || sib.classList.contains('line-divider')) return;
+  pushUndo();
+  tr.parentNode.insertBefore(tr, sib);
+  window._markUnsaved();
+  resortActoresSection();
+}
+function moveRowDown(btn) {
+  const tr = btn.closest('tr');
+  const sib = tr.nextElementSibling;
+  if (!sib || sib.classList.contains('section-sep') || sib.classList.contains('line-divider')) return;
+  pushUndo();
+  sib.after(tr);
+  window._markUnsaved();
+  resortActoresSection();
+}
 function insertRowBefore(btn) {
   const tr = btn.closest('tr'); const section = tr.dataset.section;
   const actor = prompt('Nombre del actor / fila:'); if (actor===null) return;
@@ -1203,7 +1227,7 @@ function fbBadgeTitle(state) {
   if (state==='system') return 'No es un actor humano — es infraestructura/soporte técnico';
   return '';
 }
-const GAP_LABELS = { noexiste:'No existe', nosabemos:'No sabemos', brecha:'Brecha identificada', tobe:'Propuesta TO-BE' };
+const GAP_LABELS = { noexiste:'No existe', nosabemos:'No sabemos', brecha:'Brecha (ficha)', tobe:'Propuesta TO-BE (ficha)', tagyellow:'Preventivo', tagorange:'Incumplimiento', tagred:'Riesgo crítico' };
 let gapsRegistry = {};
 function collectGaps() {
   const gaps = [];
@@ -1214,12 +1238,19 @@ function collectGaps() {
     const sectionLabel = findSectionLabelForRow(tr);
     tr.querySelectorAll('td').forEach((td,i) => {
       if (i===0) return;
+      const etapa = ths[i-1]?.querySelector('.stage-title')?.textContent || '';
       const state = td.querySelector('.state-badge')?.dataset.state || '';
       if (state === 'noexiste' || state === 'nosabemos') {
-        const etapa = ths[i-1]?.querySelector('.stage-title')?.textContent || '';
         const text = (td.querySelector('.cell-main')?.textContent || '').trim();
         gaps.push({ type: state, section: sectionLabel, actor: actorLabel, etapa, snippet: text || '(celda vacía)', td });
       }
+      td.querySelectorAll('.tag-yellow,.tag-orange,.tag-red').forEach(tag => {
+        let type = 'tagred';
+        if (tag.classList.contains('tag-yellow')) type = 'tagyellow';
+        else if (tag.classList.contains('tag-orange')) type = 'tagorange';
+        const text = (tag.firstChild?.textContent || '').trim();
+        if (text) gaps.push({ type, section: sectionLabel, actor: actorLabel, etapa, snippet: text, td });
+      });
     });
   });
   Object.keys(fichaData).forEach(key => {
@@ -1239,12 +1270,15 @@ function collectGaps() {
 function openGapsPanel() {
   const gaps = collectGaps();
   gapsRegistry = {};
-  const counts = { noexiste:0, nosabemos:0, brecha:0, tobe:0 };
+  const counts = { noexiste:0, nosabemos:0, brecha:0, tobe:0, tagyellow:0, tagorange:0, tagred:0 };
   gaps.forEach(g => counts[g.type]++);
   document.getElementById('gaps-summary').innerHTML = `
     <span class="gaps-count gc-noexiste">${counts.noexiste} no existe</span>
     <span class="gaps-count gc-nosabemos">${counts.nosabemos} no sabemos</span>
-    <span class="gaps-count gc-brecha">${counts.brecha} brechas</span>
+    <span class="gaps-count gc-tagyellow">${counts.tagyellow} preventivo</span>
+    <span class="gaps-count gc-tagorange">${counts.tagorange} incumplimiento</span>
+    <span class="gaps-count gc-tagred">${counts.tagred} riesgo crítico</span>
+    <span class="gaps-count gc-brecha">${counts.brecha} brechas (ficha)</span>
     <span class="gaps-count gc-tobe">${counts.tobe} propuestas TO-BE</span>`;
   const bySection = {};
   gaps.forEach(g => { (bySection[g.section] ??= {}); (bySection[g.section][g.actor] ??= []).push(g); });
