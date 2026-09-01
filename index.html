@@ -203,9 +203,37 @@
   .ficha-icon:hover { background:var(--purple); color:white; }
   body.role-viewer .ficha-icon { cursor:pointer; }
 
+  #gaps-overlay { position:fixed; inset:0; background:rgba(20,20,18,.4); z-index:400; opacity:0; pointer-events:none; transition:opacity .2s; }
+  #gaps-overlay.open { opacity:1; pointer-events:auto; }
+  #gaps-panel { position:fixed; top:0; right:-460px; width:440px; max-width:94vw; height:100%; background:white; box-shadow:-8px 0 24px rgba(0,0,0,.18); z-index:410; padding:20px; overflow-y:auto; transition:right .22s ease; }
+  #gaps-panel.open { right:0; }
+  #gaps-panel .close { position:absolute; top:14px; right:14px; background:none; border:1px solid var(--border-h); width:26px; height:26px; border-radius:6px; cursor:pointer; color:var(--text-s); font-size:12px; }
+  #gaps-panel .close:hover { background:var(--gray-l); }
+  #gaps-panel h3 { font-size:14px; font-weight:600; margin:26px 0 10px; }
+  #gaps-summary { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+  .gaps-count { font-size:10.5px; padding:3px 8px; border-radius:10px; font-weight:600; white-space:nowrap; }
+  .gc-noexiste { background:var(--red-l); color:var(--red); }
+  .gc-nosabemos { background:var(--amber-l); color:var(--amber); }
+  .gc-brecha { background:var(--coral-l); color:var(--coral); }
+  .gc-tobe { background:var(--azul-l); color:var(--azul); }
+  .gaps-section { font-size:10px; text-transform:uppercase; letter-spacing:.06em; font-weight:700; color:var(--text-s); margin:16px 0 4px; border-bottom:1px solid var(--border); padding-bottom:3px; }
+  .gaps-actor { font-size:11.5px; font-weight:600; color:var(--text); margin:8px 0 4px; }
+  .gaps-item { border:1px solid var(--border); border-radius:6px; padding:8px 10px; margin-bottom:8px; }
+  .gaps-item .gaps-tag { font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+  .gi-noexiste .gaps-tag { color:var(--red); }
+  .gi-nosabemos .gaps-tag { color:var(--amber); }
+  .gi-brecha .gaps-tag { color:var(--coral); }
+  .gi-tobe .gaps-tag { color:var(--azul); }
+  .gaps-item p { font-size:12px; color:var(--text); margin:4px 0 6px; line-height:1.4; }
+  .gaps-goto { font-size:10.5px; padding:3px 8px; border:1px solid var(--border-h); border-radius:5px; background:white; cursor:pointer; color:var(--azul); }
+  .gaps-goto:hover { background:var(--azul-l); }
+  .gaps-empty { font-size:12px; color:var(--text-s); margin-top:20px; }
+  td.gap-flash { animation: gapFlash 2s ease; }
+  @keyframes gapFlash { 0%,100%{box-shadow:none;} 20%,60%{box-shadow:inset 0 0 0 3px var(--azul);} }
+
   @media print {
     header,footer { position:static; }
-    .toolbar,.status-bar,.col-controls,.row-controls,.cell-add-btns,#ficha-overlay,#ficha-panel,.ficha-icon,.progress-bar,.search-bar { display:none !important; }
+    .toolbar,.status-bar,.col-controls,.row-controls,.cell-add-btns,#ficha-overlay,#ficha-panel,.ficha-icon,.progress-bar,.search-bar,#gaps-overlay,#gaps-panel { display:none !important; }
     .container { padding:0; } body { background:white; }
     table { box-shadow:none; min-width:0; } td,th { padding:4px 5px; font-size:9px; }
     .tag-green,.tag-yellow,.tag-orange,.tag-red,.tag-blue { font-size:8px; }
@@ -257,6 +285,7 @@
   <div class="tb-sep"></div>
   <button class="tb-btn" id="collapse-toggle-btn" onclick="toggleCollapseAll()">Colapsar todo</button>
   <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="openGapsPanel()">⚠ Ver brechas</button>
   <button class="tb-btn" onclick="exportToExcel()">⬇ Exportar Excel</button>
   <button class="tb-btn" onclick="window.print()">Imprimir</button>
 </div>
@@ -536,6 +565,14 @@ loadLatestVersion().then(() => loadVersionList());
 
   <p class="ficha-state" id="ficha-state">—</p>
   <p class="ficha-meta" id="ficha-meta"></p>
+</div>
+
+<div id="gaps-overlay" onclick="closeGapsPanel()"></div>
+<div id="gaps-panel">
+  <button class="close" onclick="closeGapsPanel()" title="Cerrar">✕</button>
+  <h3>Panel de brechas</h3>
+  <div id="gaps-summary"></div>
+  <div id="gaps-list"></div>
 </div>
 
 <script>
@@ -1152,6 +1189,7 @@ document.getElementById('tbody').addEventListener('dblclick', e => {
   openFichaPanel(td);
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('ficha-panel').classList.contains('open')) closeFicha(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('gaps-panel').classList.contains('open')) closeGapsPanel(); });
 
 function fbBadgeLabel(state) {
   if (state==='front') return '● visible';
@@ -1165,6 +1203,89 @@ function fbBadgeTitle(state) {
   if (state==='system') return 'No es un actor humano — es infraestructura/soporte técnico';
   return '';
 }
+const GAP_LABELS = { noexiste:'No existe', nosabemos:'No sabemos', brecha:'Brecha identificada', tobe:'Propuesta TO-BE' };
+let gapsRegistry = {};
+function collectGaps() {
+  const gaps = [];
+  const ths = Array.from(document.querySelectorAll('#thead-row th.col-stage'));
+  document.querySelectorAll('#tbody tr').forEach(tr => {
+    if (tr.classList.contains('section-sep') || tr.classList.contains('line-divider')) return;
+    const actorLabel = (tr.querySelector('.actor-text')?.textContent || '').trim();
+    const sectionLabel = findSectionLabelForRow(tr);
+    tr.querySelectorAll('td').forEach((td,i) => {
+      if (i===0) return;
+      const state = td.querySelector('.state-badge')?.dataset.state || '';
+      if (state === 'noexiste' || state === 'nosabemos') {
+        const etapa = ths[i-1]?.querySelector('.stage-title')?.textContent || '';
+        const text = (td.querySelector('.cell-main')?.textContent || '').trim();
+        gaps.push({ type: state, section: sectionLabel, actor: actorLabel, etapa, snippet: text || '(celda vacía)', td });
+      }
+    });
+  });
+  Object.keys(fichaData).forEach(key => {
+    const f = fichaData[key]; if (!f) return;
+    const [rowId, colId] = key.split(':');
+    const tr = document.querySelector(`#tbody tr[data-row-id="${rowId}"]`); if (!tr) return;
+    const thIndex = ths.findIndex(th => th.dataset.colId === colId); if (thIndex < 0) return;
+    const td = tr.children[thIndex+1]; if (!td) return;
+    const actorLabel = (tr.querySelector('.actor-text')?.textContent || '').trim();
+    const sectionLabel = findSectionLabelForRow(tr);
+    const etapa = ths[thIndex]?.querySelector('.stage-title')?.textContent || '';
+    if (f.brechas && f.brechas.trim()) gaps.push({ type:'brecha', section: sectionLabel, actor: actorLabel, etapa, snippet: f.brechas.trim(), td });
+    if (f.tobe && f.tobe.trim()) gaps.push({ type:'tobe', section: sectionLabel, actor: actorLabel, etapa, snippet: f.tobe.trim(), td });
+  });
+  return gaps;
+}
+function openGapsPanel() {
+  const gaps = collectGaps();
+  gapsRegistry = {};
+  const counts = { noexiste:0, nosabemos:0, brecha:0, tobe:0 };
+  gaps.forEach(g => counts[g.type]++);
+  document.getElementById('gaps-summary').innerHTML = `
+    <span class="gaps-count gc-noexiste">${counts.noexiste} no existe</span>
+    <span class="gaps-count gc-nosabemos">${counts.nosabemos} no sabemos</span>
+    <span class="gaps-count gc-brecha">${counts.brecha} brechas</span>
+    <span class="gaps-count gc-tobe">${counts.tobe} propuestas TO-BE</span>`;
+  const bySection = {};
+  gaps.forEach(g => { (bySection[g.section] ??= {}); (bySection[g.section][g.actor] ??= []).push(g); });
+  let html = '';
+  if (!gaps.length) html = '<p class="gaps-empty">No hay celdas "no existe" / "no sabemos", brechas ni propuestas TO-BE registradas todavía.</p>';
+  Object.keys(bySection).forEach(sec => {
+    html += `<div class="gaps-section">${escapeHtml(sec || 'Sin sección')}</div>`;
+    Object.keys(bySection[sec]).forEach(actor => {
+      html += `<div class="gaps-actor">${escapeHtml(actor || 'Sin actor')}</div>`;
+      bySection[sec][actor].forEach((g,idx) => {
+        const gid = 'gap' + Object.keys(gapsRegistry).length;
+        gapsRegistry[gid] = g.td;
+        html += `<div class="gaps-item gi-${g.type}">
+          <span class="gaps-tag">${GAP_LABELS[g.type]} · ${escapeHtml(g.etapa)}</span>
+          <p>${escapeHtml(g.snippet)}</p>
+          <button class="gaps-goto" onclick="goToGap('${gid}')">Ir a la celda →</button>
+        </div>`;
+      });
+    });
+  });
+  document.getElementById('gaps-list').innerHTML = html;
+  document.getElementById('gaps-overlay').classList.add('open');
+  document.getElementById('gaps-panel').classList.add('open');
+}
+function closeGapsPanel() {
+  document.getElementById('gaps-overlay').classList.remove('open');
+  document.getElementById('gaps-panel').classList.remove('open');
+}
+function goToGap(gid) {
+  const td = gapsRegistry[gid]; if (!td) return;
+  closeGapsPanel();
+  const tr = td.closest('tr');
+  const sep = document.querySelector(`#tbody tr.section-sep[data-section="${tr.dataset.section}"]`);
+  if (sep && sep.classList.contains('collapsed')) collapseSection(sep, false);
+  setTimeout(() => {
+    td.scrollIntoView({ behavior:'smooth', block:'center', inline:'center' });
+    td.classList.add('gap-flash');
+    setTimeout(() => td.classList.remove('gap-flash'), 2000);
+  }, 50);
+}
+
 function toggleFb(btn) {
   const tr = btn.closest('tr');
   if (tr.dataset.isCustomer === 'true') return;
