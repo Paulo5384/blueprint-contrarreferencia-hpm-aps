@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mapa de Servicios — Contrarreferencia y Continuidad Asistencial · HPM-APS</title>
+<title>Blueprint de Contrarreferencia y Transición Asistencial en Red · HPM-APS</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -211,6 +211,11 @@
   #gaps-panel .close:hover { background:var(--gray-l); }
   #gaps-panel h3 { font-size:14px; font-weight:600; margin:26px 0 10px; }
   #gaps-summary { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+  .gaps-controls { display:flex; align-items:center; gap:6px; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--border); }
+  .gaps-controls label { font-size:11px; color:var(--text-s); font-weight:600; }
+  .gaps-controls select { font-size:11.5px; padding:4px 7px; border:1px solid var(--border-h); border-radius:5px; color:var(--text); background:white; }
+  .gaps-etapa-header { font-size:10px; text-transform:uppercase; letter-spacing:.06em; font-weight:700; color:var(--azul); margin:16px 0 4px; border-bottom:1px solid var(--azul-m); padding-bottom:3px; }
+  .gaps-rank { font-size:9px; color:var(--text-xs); font-weight:400; margin-left:4px; }
   .gaps-count { font-size:10.5px; padding:3px 8px; border-radius:10px; font-weight:600; white-space:nowrap; }
   .gc-noexiste { background:var(--red-l); color:var(--red); }
   .gc-nosabemos { background:var(--amber-l); color:var(--amber); }
@@ -266,8 +271,8 @@
 
 <header>
   <div class="header-left">
-    <h1>Mapa de Servicios — Contrarreferencia y Continuidad Asistencial HPM–APS</h1>
-    <p>Hospital Puerto Montt · Servicio de Salud del Reloncaví · Navegadores en Red / UGT · V0.2</p>
+    <h1>Blueprint de Contrarreferencia y Transición Asistencial en Red</h1>
+    <p>Trayectoria asistencial y continuidad entre niveles de atención</p>
   </div>
   <div class="legend">
     <div class="leg-item"><div class="leg-dot leg-green"></div> Fortaleza</div>
@@ -349,11 +354,11 @@
 </div>
 
 <footer>
-  <strong>Hospital Puerto Montt · Servicio de Salud del Reloncaví</strong> · UGT / Navegadores en Red · Blueprint V0.2 — base ORD. N°2301 y Protocolo Res. Exenta N°6041-2025, en diálogo con MGIAA v2.0<br>
-  <span style="opacity:.8">Las filas 🔵🟠🔴 son un <b>lente de lectura transversal</b> sobre el proceso — no reescriben lo que hace cada actor por tipo de CR. Lo que cambia entre rutas es el ritmo, el plazo y el nivel de seguimiento; el actor responsable en cada etapa es el mismo.</span><br>
-  <span style="opacity:.8">"Responsabilidad primaria" describe el nivel operativo de cada etapa — no reasigna la continuidad como responsabilidad de una unidad. Según el MGIAA, la continuidad es resultado de la gobernanza del proceso completo, no de ningún actor de esta tabla por sí solo.</span><br>
-  <span style="display:block;margin-top:6px;font-weight:600;color:var(--text-s)">Diseño conceptual y desarrollo funcional: Paulo Muñoz Braüchi · Navegadores en Red / UGT · Hospital Puerto Montt</span>
-  <span style="display:block;font-size:9px;opacity:.7">Documento de trabajo interno V0.2, sujeto a validación con APS/SSDR — no constituye instrumento normativo oficial. Uso interno del Servicio de Salud del Reloncaví.</span>
+  <strong>Servicio de Salud del Reloncaví · Hospital Puerto Montt · Navegadores en Red / UGT · Blueprint V0.2</strong><br>
+  <span style="display:block;margin-top:3px">Marco de referencia: ORD. N°2301 · Protocolo de Referencia y Contrarreferencia · MGIAA v2.0</span>
+  <span style="display:block;margin-top:3px;font-weight:600;color:var(--text-s)">Diseño conceptual y desarrollo funcional: Paulo Muñoz Braüchi · Documento sujeto a validación con APS/SSDR</span>
+  <span style="display:block;font-size:9px;opacity:.7;margin-top:2px">Documento de trabajo interno. No constituye instrumento normativo oficial.</span>
+  <span style="display:block;font-size:9px;opacity:.6;margin-top:8px;max-width:820px;margin-left:auto;margin-right:auto">Las filas 🔵🟠🔴 son un lente de lectura transversal sobre el proceso — no reescriben lo que hace cada actor por tipo de CR; lo que cambia entre rutas es el ritmo, el plazo y el nivel de seguimiento. "Responsabilidad primaria" describe el nivel operativo de cada etapa, no reasigna la continuidad como responsabilidad de una unidad — según el MGIAA, la continuidad es resultado de la gobernanza del proceso completo.</span>
 </footer>
 
 <div id="modal-save" class="modal-overlay" style="display:none">
@@ -578,6 +583,15 @@ loadLatestVersion().then(() => loadVersionList());
   <button class="close" onclick="closeGapsPanel()" title="Cerrar">✕</button>
   <h3>Panel de brechas</h3>
   <div id="gaps-summary"></div>
+  <div class="gaps-controls">
+    <label for="gaps-view">Ver:</label>
+    <select id="gaps-view" onchange="refreshGapsPanel()">
+      <option value="actor">Por actor</option>
+      <option value="riesgo">Por riesgo (más grave primero)</option>
+      <option value="etapa">Por etapa del proceso</option>
+      <option value="reciente">Por reciente</option>
+    </select>
+  </div>
   <div id="gaps-list"></div>
 </div>
 
@@ -630,11 +644,11 @@ function dotsHtml() {
 }
 const STATE_LABELS = { existe:'E', noexiste:'NE', nosabemos:'NS', propuesta:'P' };
 const STATE_LABELS_ES = { existe:'Existe', noexiste:'No existe', nosabemos:'No sabemos', propuesta:'Es una propuesta' };
-function stateBadgeHtml(state, by, at) {
+function stateBadgeHtml(state, by, at, atIso) {
   const cls = state ? 'state-'+state : '';
   const label = state ? STATE_LABELS[state] : '·';
   const title = state && by ? `${STATE_LABELS_ES[state]} — marcado por ${by}, ${at||''}` : '¿Existe hoy? — clic para marcar';
-  const dataAttrs = by ? ` data-by="${by}" data-at="${at||''}"` : '';
+  const dataAttrs = by ? ` data-by="${by}" data-at="${at||''}" data-at-iso="${atIso||''}"` : '';
   return `<button class="state-badge ${cls}" data-state="${state||''}"${dataAttrs} onclick="cycleState(this)" title="${title}">${label}</button>`;
 }
 function cycleState(btn) {
@@ -651,7 +665,7 @@ function cycleState(btn) {
   if (next && typeof currentEditorName === 'function') {
     const who = currentEditorName();
     const when = new Date().toLocaleString('es-CL', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-    btn.dataset.by = who; btn.dataset.at = when;
+    btn.dataset.by = who; btn.dataset.at = when; btn.dataset.atIso = new Date().toISOString();
     btn.title = `${STATE_LABELS_ES[next]} — marcado por ${who}, ${when}`;
   } else {
     btn.dataset.by = ''; btn.dataset.at = '';
@@ -862,6 +876,7 @@ function serializeState() {
         const state = td.dataset.state || stateBadge?.dataset.state || '';
         const stateBy = stateBadge?.dataset.by || '';
         const stateAt = stateBadge?.dataset.at || '';
+        const stateAtIso = stateBadge?.dataset.atIso || '';
         const tags = [];
         td.querySelectorAll('.tag-green,.tag-yellow,.tag-orange,.tag-red,.tag-blue').forEach(tag => {
           let type='red';
@@ -869,9 +884,9 @@ function serializeState() {
           else if (tag.classList.contains('tag-yellow')) type='yellow';
           else if (tag.classList.contains('tag-orange')) type='orange';
           else if (tag.classList.contains('tag-blue')) type='blue';
-          tags.push({ type, text: tag.firstChild?.textContent?.trim()||'', by: tag.dataset.by||'', at: tag.dataset.at||'' });
+          tags.push({ type, text: tag.firstChild?.textContent?.trim()||'', by: tag.dataset.by||'', at: tag.dataset.at||'', atIso: tag.dataset.atIso||'' });
         });
-        cells.push({ main, tags, state, stateBy, stateAt });
+        cells.push({ main, tags, state, stateBy, stateAt, stateAtIso });
       });
       rows.push({ type:'data', section: tr.dataset.section, rowCls: tr.className, fb: tr.dataset.fb||'', isCustomer: tr.dataset.isCustomer==='true', id: tr.dataset.rowId||'', cells });
     }
@@ -928,14 +943,14 @@ function restoreState(state) {
           const map = {green:'tag-green',yellow:'tag-yellow',orange:'tag-orange',red:'tag-red',blue:'tag-blue'};
           const tags = (cell.tags||[]).map(t=>{
             const titleAttr = t.by ? ` title="Agregado por ${t.by}, ${t.at||''}"` : '';
-            const dataAttrs = t.by ? ` data-by="${t.by}" data-at="${t.at||''}"` : '';
+            const dataAttrs = t.by ? ` data-by="${t.by}" data-at="${t.at||''}" data-at-iso="${t.atIso||''}"` : '';
             return `<span class="${map[t.type]||'tag-red'}" contenteditable="${editMode?'true':'false'}"${titleAttr}${dataAttrs}>${t.text}<span class="del-tag" onclick="removeTag(this)">✕</span></span>`;
           }).join('');
           const plainMain = stripToPlainText(cell.main);
           const isEmpty = !plainMain || plainMain===em;
           const st = cell.state || '';
           if (st) td.classList.add('td-'+st);
-          td.innerHTML = `${stateBadgeHtml(st||null, cell.stateBy, cell.stateAt)}<div class="cell-wrap"><div class="cell-main ${isEmpty?'empty':''}" contenteditable="${editMode?'true':'false'}">${isEmpty?em:escapeHtml(plainMain)}</div>${tags}<div class="cell-add-btns">${dotsHtml()}</div></div>`;
+          td.innerHTML = `${stateBadgeHtml(st||null, cell.stateBy, cell.stateAt, cell.stateAtIso)}<div class="cell-wrap"><div class="cell-main ${isEmpty?'empty':''}" contenteditable="${editMode?'true':'false'}">${isEmpty?em:escapeHtml(plainMain)}</div>${tags}<div class="cell-add-btns">${dotsHtml()}</div></div>`;
         }
         dtr.appendChild(td);
       });
@@ -1186,6 +1201,7 @@ function saveFichaField() {
   f.evidencias = document.getElementById('f-evidencias').value;
   f._by = typeof currentEditorName === 'function' ? currentEditorName() : '';
   f._at = new Date().toLocaleString('es-CL', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  f._atIso = new Date().toISOString();
   if (fichaHasContent(f)) fichaData[currentFichaKey] = f; else delete fichaData[currentFichaKey];
   window._markUnsaved();
   updateFichaIcon(currentFichaKey);
@@ -1238,18 +1254,21 @@ function collectGaps() {
     const sectionLabel = findSectionLabelForRow(tr);
     tr.querySelectorAll('td').forEach((td,i) => {
       if (i===0) return;
-      const etapa = ths[i-1]?.querySelector('.stage-title')?.textContent || '';
-      const state = td.querySelector('.state-badge')?.dataset.state || '';
+      const etapaEl = ths[i-1];
+      const etapa = etapaEl?.querySelector('.stage-title')?.textContent || '';
+      const etapaN = i;
+      const badge = td.querySelector('.state-badge');
+      const state = badge?.dataset.state || '';
       if (state === 'noexiste' || state === 'nosabemos') {
         const text = (td.querySelector('.cell-main')?.textContent || '').trim();
-        gaps.push({ type: state, section: sectionLabel, actor: actorLabel, etapa, snippet: text || '(celda vacía)', td });
+        gaps.push({ type: state, section: sectionLabel, actor: actorLabel, etapa, etapaN, snippet: text || '(celda vacía)', td, atIso: badge?.dataset.atIso || '' });
       }
       td.querySelectorAll('.tag-yellow,.tag-orange,.tag-red').forEach(tag => {
         let type = 'tagred';
         if (tag.classList.contains('tag-yellow')) type = 'tagyellow';
         else if (tag.classList.contains('tag-orange')) type = 'tagorange';
         const text = (tag.firstChild?.textContent || '').trim();
-        if (text) gaps.push({ type, section: sectionLabel, actor: actorLabel, etapa, snippet: text, td });
+        if (text) gaps.push({ type, section: sectionLabel, actor: actorLabel, etapa, etapaN, snippet: text, td, atIso: tag.dataset.atIso || '' });
       });
     });
   });
@@ -1262,12 +1281,28 @@ function collectGaps() {
     const actorLabel = (tr.querySelector('.actor-text')?.textContent || '').trim();
     const sectionLabel = findSectionLabelForRow(tr);
     const etapa = ths[thIndex]?.querySelector('.stage-title')?.textContent || '';
-    if (f.brechas && f.brechas.trim()) gaps.push({ type:'brecha', section: sectionLabel, actor: actorLabel, etapa, snippet: f.brechas.trim(), td });
-    if (f.tobe && f.tobe.trim()) gaps.push({ type:'tobe', section: sectionLabel, actor: actorLabel, etapa, snippet: f.tobe.trim(), td });
+    const etapaN = thIndex+1;
+    if (f.brechas && f.brechas.trim()) gaps.push({ type:'brecha', section: sectionLabel, actor: actorLabel, etapa, etapaN, snippet: f.brechas.trim(), td, atIso: f._atIso||'' });
+    if (f.tobe && f.tobe.trim()) gaps.push({ type:'tobe', section: sectionLabel, actor: actorLabel, etapa, etapaN, snippet: f.tobe.trim(), td, atIso: f._atIso||'' });
   });
   return gaps;
 }
+const SEVERITY_RANK = { tagred:1, noexiste:2, tagorange:3, nosabemos:4, tagyellow:5, brecha:6, tobe:7 };
+function gapItemHtml(g) {
+  const gid = 'gap' + Object.keys(gapsRegistry).length;
+  gapsRegistry[gid] = g.td;
+  return `<div class="gaps-item gi-${g.type}">
+    <span class="gaps-tag">${GAP_LABELS[g.type]} · ${escapeHtml(g.etapa)}</span>
+    <p>${escapeHtml(g.snippet)}</p>
+    <button class="gaps-goto" onclick="goToGap('${gid}')">Ir a la celda →</button>
+  </div>`;
+}
 function openGapsPanel() {
+  refreshGapsPanel();
+  document.getElementById('gaps-overlay').classList.add('open');
+  document.getElementById('gaps-panel').classList.add('open');
+}
+function refreshGapsPanel() {
   const gaps = collectGaps();
   gapsRegistry = {};
   const counts = { noexiste:0, nosabemos:0, brecha:0, tobe:0, tagyellow:0, tagorange:0, tagred:0 };
@@ -1280,28 +1315,42 @@ function openGapsPanel() {
     <span class="gaps-count gc-tagred">${counts.tagred} riesgo crítico</span>
     <span class="gaps-count gc-brecha">${counts.brecha} brechas (ficha)</span>
     <span class="gaps-count gc-tobe">${counts.tobe} propuestas TO-BE</span>`;
-  const bySection = {};
-  gaps.forEach(g => { (bySection[g.section] ??= {}); (bySection[g.section][g.actor] ??= []).push(g); });
+
+  const view = document.getElementById('gaps-view')?.value || 'actor';
   let html = '';
-  if (!gaps.length) html = '<p class="gaps-empty">No hay celdas "no existe" / "no sabemos", brechas ni propuestas TO-BE registradas todavía.</p>';
-  Object.keys(bySection).forEach(sec => {
-    html += `<div class="gaps-section">${escapeHtml(sec || 'Sin sección')}</div>`;
-    Object.keys(bySection[sec]).forEach(actor => {
-      html += `<div class="gaps-actor">${escapeHtml(actor || 'Sin actor')}</div>`;
-      bySection[sec][actor].forEach((g,idx) => {
-        const gid = 'gap' + Object.keys(gapsRegistry).length;
-        gapsRegistry[gid] = g.td;
-        html += `<div class="gaps-item gi-${g.type}">
-          <span class="gaps-tag">${GAP_LABELS[g.type]} · ${escapeHtml(g.etapa)}</span>
-          <p>${escapeHtml(g.snippet)}</p>
-          <button class="gaps-goto" onclick="goToGap('${gid}')">Ir a la celda →</button>
-        </div>`;
+  if (!gaps.length) {
+    html = '<p class="gaps-empty">No hay celdas "no existe" / "no sabemos", tags de preventivo/incumplimiento/riesgo crítico, brechas ni propuestas TO-BE registradas todavía.</p>';
+  } else if (view === 'actor') {
+    const bySection = {};
+    gaps.forEach(g => { (bySection[g.section] ??= {}); (bySection[g.section][g.actor] ??= []).push(g); });
+    Object.keys(bySection).forEach(sec => {
+      html += `<div class="gaps-section">${escapeHtml(sec || 'Sin sección')}</div>`;
+      Object.keys(bySection[sec]).forEach(actor => {
+        html += `<div class="gaps-actor">${escapeHtml(actor || 'Sin actor')}</div>`;
+        bySection[sec][actor].sort((a,b) => SEVERITY_RANK[a.type]-SEVERITY_RANK[b.type]).forEach(g => { html += gapItemHtml(g); });
       });
     });
-  });
+  } else if (view === 'riesgo') {
+    gaps.sort((a,b) => SEVERITY_RANK[a.type]-SEVERITY_RANK[b.type]);
+    let lastRank = null;
+    gaps.forEach(g => {
+      const r = SEVERITY_RANK[g.type];
+      if (r !== lastRank) { html += `<div class="gaps-section">${GAP_LABELS[g.type]}</div>`; lastRank = r; }
+      html += gapItemHtml(g);
+    });
+  } else if (view === 'etapa') {
+    const byEtapa = {};
+    gaps.forEach(g => { (byEtapa[g.etapaN] ??= { label:g.etapa, items:[] }).items.push(g); });
+    Object.keys(byEtapa).sort((a,b) => a-b).forEach(n => {
+      const grp = byEtapa[n];
+      html += `<div class="gaps-etapa-header">${n}. ${escapeHtml(grp.label)} — ${grp.items.length} item${grp.items.length===1?'':'s'}</div>`;
+      grp.items.sort((a,b) => SEVERITY_RANK[a.type]-SEVERITY_RANK[b.type]).forEach(g => { html += gapItemHtml(g); });
+    });
+  } else if (view === 'reciente') {
+    gaps.sort((a,b) => (b.atIso||'').localeCompare(a.atIso||''));
+    gaps.forEach(g => { html += gapItemHtml(g); });
+  }
   document.getElementById('gaps-list').innerHTML = html;
-  document.getElementById('gaps-overlay').classList.add('open');
-  document.getElementById('gaps-panel').classList.add('open');
 }
 function closeGapsPanel() {
   document.getElementById('gaps-overlay').classList.remove('open');
@@ -1385,7 +1434,7 @@ function addTag(btn, type) {
   tag.className = map[type]; tag.contentEditable = editMode?'true':'false';
   const who = typeof currentEditorName === 'function' ? currentEditorName() : '';
   const when = new Date().toLocaleString('es-CL', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-  if (who) { tag.dataset.by = who; tag.dataset.at = when; tag.title = `Agregado por ${who}, ${when}`; }
+  if (who) { tag.dataset.by = who; tag.dataset.at = when; tag.dataset.atIso = new Date().toISOString(); tag.title = `Agregado por ${who}, ${when}`; }
   tag.innerHTML = 'Texto<span class="del-tag" onclick="removeTag(this)">✕</span>';
   wrap.insertBefore(tag, addBtns); window._markUnsaved();
   const r = document.createRange(); r.setStart(tag.firstChild,0); r.setEnd(tag.firstChild,tag.firstChild.length);
